@@ -1,0 +1,30 @@
+# 环境变量
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# 上传的临时文件
+uploads/*
+!uploads/.gitkeep
+
+# 生成的复习文档输出
+output/
+
+# 课程课件原文 —— 版权材料，不能公开（里面是第三方课程的 PPT）
+课件/
+
+# AI 助手的工作目录（含项目内部日志与笔记）
+.workbuddy/
+
+# 测试缓存
+.pytest_cache/
+.pytest-tmp/
+
+# IDE
+.idea/
+.vscode/
