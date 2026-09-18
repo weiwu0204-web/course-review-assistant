@@ -1,0 +1,2007 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="ODpDmUZdDqHkOMXKtkztBE">
+<head data-page-node-id="8fdKoAh82DiATe6pUzQ9f9">
+<meta charset="UTF-8" data-page-node-id="n53xCOsEHVC2KpAYeM7RH2" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="J9tGepCJKTRYO4uCAJCPlb" />
+<title>PPT 复习助手</title>
+<script src="/static/vendor/marked.min.js"></script>
+<script src="/static/vendor/purify.min.js"></script>
+<style>
+  :root {
+    --text: #1f2328;
+    --muted: #656d76;
+    --border: #d8dee4;
+    --bg: #f6f7f8;
+    --card: #ffffff;
+    --accent: #1f2328;      /* 墨黑主按钮 */
+    --link: #0969da;        /* 普通蓝，仅链接/焦点用 */
+    --ok: #1a7f37;
+    --err: #d1242f;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* 顶部：不做大横幅，一条白底标题栏更像工具页 */
+  .topbar {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .topbar .tt { flex: 1; min-width: 0; }
+  .topbar h1 { font-size: 19px; font-weight: 600; }
+  .topbar p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  .container { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    margin-bottom: 16px;
+  }
+
+  .drop-zone {
+    border: 1px dashed #b6bdc4;
+    border-radius: 6px;
+    padding: 30px 20px;
+    text-align: center;
+    cursor: pointer;
+    background: #fbfbfb;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .drop-zone:hover, .drop-zone.dragging {
+    border-color: var(--text);
+    background: #f4f5f6;
+  }
+  .drop-zone p { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .drop-zone strong { font-weight: 500; }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; margin: 14px 0; }
+  .field { flex: 1; min-width: 160px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .check {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 13px; color: var(--text); line-height: 1.6; cursor: pointer;
+    margin-top: 4px;
+  }
+  .check input { margin-top: 3px; accent-color: var(--text); }
+
+  .exam-block {
+    margin-top: 16px; padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .exam-title { font-size: 14px; font-weight: 600; }
+  .exam-hint { display: block; font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.7; }
+
+  textarea {
+    width: 100%; padding: 9px 11px; border: 1px solid #c8ced4;
+    border-radius: 6px; font-size: 13px; font-family: inherit;
+    resize: vertical; background: #fff; color: var(--text); line-height: 1.6;
+  }
+  textarea:focus, select:focus { outline: none; border-color: var(--link); }
+
+  select {
+    width: 100%; padding: 8px 10px; border: 1px solid #c8ced4;
+    border-radius: 6px; background: #fff; font-size: 13px; color: var(--text);
+  }
+  select:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+
+  .exam-file-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+
+  .btn {
+    display: inline-block; border: none; border-radius: 6px;
+    padding: 9px 22px; font-size: 14px; cursor: pointer;
+    background: var(--accent); color: #fff;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: #32383f; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn.secondary {
+    background: #fff; color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn.secondary:hover { background: #f3f4f6; }
+  .btn.small { padding: 5px 12px; font-size: 13px; }
+
+  #status { font-size: 13px; color: var(--muted); margin-top: 10px; }
+  #status.error { color: var(--err); }
+  #status.success { color: var(--ok); }
+
+  .meta { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  /* 隐藏工具类必须 !important：本文件里 .modal-mask/.m-ico 等自带 display 的
+     类定义在它之后，同等优先级下会覆盖 display:none 导致"关不掉/隐藏失败" */
+  .hidden { display: none !important; }
+
+  #resultCard h3 { font-size: 15px; margin-bottom: 12px; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .toolbar button {
+    border: 1px solid var(--border); background: #fff; color: var(--text);
+    border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer;
+  }
+  .toolbar button:hover { background: #f3f4f6; }
+
+  #markdown {
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 18px 20px; font-size: 14px; line-height: 1.8; background: #fff;
+    word-break: break-word;
+  }
+  #markdown h1 { font-size: 22px; margin: 6px 0 14px; padding-bottom: 6px; border-bottom: 1px solid var(--border); font-weight: 600; }
+  #markdown h2 { font-size: 18px; margin: 24px 0 8px; font-weight: 600; }
+  #markdown h3 { font-size: 16px; margin: 18px 0 6px; font-weight: 600; }
+  #markdown h1:first-child { margin-top: 0; }
+  #markdown p { margin: 8px 0; }
+  #markdown ul, #markdown ol { margin: 8px 0 8px 24px; }
+  #markdown li { margin: 3px 0; }
+  #markdown table { border-collapse: collapse; margin: 12px 0; width: 100%; font-size: 13px; }
+  #markdown th, #markdown td { border: 1px solid var(--border); padding: 7px 10px; text-align: left; vertical-align: top; }
+  #markdown th { background: #f5f6f7; font-weight: 600; }
+  #markdown tr:nth-child(even) td { background: #fafbfb; }
+  #markdown code { background: #eef0f1; padding: 1px 5px; border-radius: 4px; font-size: 12.5px; font-family: Consolas, "Courier New", monospace; }
+  #markdown pre { background: #1f2328; color: #e6e6e6; padding: 12px 14px; border-radius: 6px; overflow-x: auto; margin: 10px 0; }
+  #markdown pre code { background: none; padding: 0; color: inherit; font-size: 12.5px; }
+  #markdown blockquote { border-left: 3px solid #c0c6cc; margin: 10px 0; padding: 2px 12px; color: var(--muted); }
+  #markdown blockquote p { margin: 4px 0; }
+  #markdown img { max-width: 100%; border-radius: 4px; }
+  #markdown a { color: var(--link); text-decoration: none; }
+  #markdown a:hover { text-decoration: underline; }
+  #markdown hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 16px; }
+
+  /* ---- 文件选中「已就绪」态：虚线框 → 绿色实线卡片 ---- */
+  .drop-zone.ready {
+    border-style: solid;
+    border-color: #2da44e;
+    background: #f2faf4;
+    padding: 18px 20px;
+  }
+  .drop-zone.ready:hover { background: #e8f6ec; }
+  .file-card { display: flex; align-items: center; justify-content: center; gap: 12px; text-align: left; }
+  .file-card svg { flex: none; }
+  .file-info .fname { font-size: 14px; font-weight: 600; word-break: break-all; }
+  .file-info .fmeta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .ready-hint { font-size: 12px; color: var(--ok); margin-top: 10px; }
+
+  /* ---- 生成进度 / 结果弹窗 ---- */
+  .modal-mask {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(31, 35, 40, 0.45);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal {
+    width: 400px; max-width: calc(100vw - 48px);
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    padding: 28px 28px 24px; text-align: center;
+  }
+  .modal .m-ico { display: flex; justify-content: center; margin-bottom: 14px; }
+  .modal .spinner {
+    width: 30px; height: 30px;
+    border: 3px solid #e2e5e9; border-top-color: var(--text);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .modal .m-title { font-size: 15px; font-weight: 600; }
+  .modal .m-text {
+    font-size: 13px; color: var(--muted); margin-top: 10px; line-height: 1.7;
+    /* 保存路径弹窗里会带 \n 分行、且长路径不能被截断 */
+    white-space: pre-line; word-break: break-all;
+  }
+  .modal .m-sub { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+  .modal .m-timer {
+    font-size: 12px; color: var(--muted); margin-top: 16px;
+    font-variant-numeric: tabular-nums;
+    border-top: 1px solid #f0f1f2; padding-top: 12px;
+  }
+  .modal .m-foot { margin-top: 20px; display: flex; gap: 10px; justify-content: center; }
+
+  /* ---- API Key 配置面板（首次使用强制遮罩 + 顶栏设置共用）---- */
+  .modal.config { width: 520px; max-width: calc(100vw - 40px); text-align: left; padding: 22px 26px 16px; }
+  .modal.config .cfg-title { font-size: 16px; font-weight: 600; }
+  .modal.config .cfg-sub { font-size: 12px; color: var(--muted); margin: 4px 0 8px; line-height: 1.6; }
+  .modal.config .field { margin: 12px 0; }
+  .modal.config .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  input[type="password"] {
+    flex: 1; min-width: 0; padding: 9px 11px; border: 1px solid #c8ced4;
+    border-radius: 6px; font-size: 13px; font-family: inherit;
+    background: #fff; color: var(--text);
+  }
+  input[type="password"]:focus { outline: none; border-color: var(--link); }
+  .pwd-row { display: flex; gap: 8px; }
+  .pwd-row .btn { flex: none; }
+  .opt-note { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+  .opt-note .cfg-price { margin-top: 2px; }
+  .opt-note a { color: var(--link, #0969da); text-decoration: underline; word-break: break-all; }
+  .opt-note .cfg-tier-label { color: var(--accent, #0969da); font-weight: 600; margin-bottom: 2px; }
+  .tier-opts { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
+  .tier-opts label { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; padding: 3px 0; }
+  .cfg-status { font-size: 13px; margin-top: 12px; min-height: 20px; line-height: 1.7; }
+  .cfg-status.error { color: var(--err); }
+  .cfg-status.success { color: var(--ok); }
+  .cfg-status.busy { color: var(--muted); }
+  .modal.config .help { margin-top: 12px; border-top: 1px solid #f0f1f2; padding-top: 8px; }
+  .modal.config .help summary { cursor: pointer; font-size: 13px; color: var(--link); user-select: none; }
+  .modal.config .help[open] summary { margin-bottom: 6px; }
+  .modal.config .help p, .modal.config .help li { font-size: 12.5px; color: var(--muted); line-height: 1.75; }
+  .modal.config .help ol { padding-left: 20px; margin: 6px 0; }
+  .modal.config .help li { margin: 3px 0; }
+  .modal.config .help .warn { color: var(--err); }
+  .cfg-foot { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
+  .cfg-saved { flex: 1; font-size: 12px; color: var(--muted); word-break: break-all; }
+
+  /* ---- 单份 / 批量 顶部 tab ---- */
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .tab {
+    border: none; background: none; padding: 10px 16px; font-size: 14px;
+    color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--text); font-weight: 600; border-bottom-color: var(--accent); }
+
+  input[type="text"] {
+    width: 100%; padding: 8px 10px; border: 1px solid #c8ced4;
+    border-radius: 6px; font-size: 13px; font-family: inherit;
+    background: #fff; color: var(--text);
+  }
+  input[type="text"]:focus { outline: none; border-color: var(--link); }
+
+  /* ---- 批量视图：文件列表 / 任务行 / 进度条 ---- */
+  .bfile {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+    border: 1px solid var(--border); border-radius: 6px; margin-top: 8px; background: #fbfbfb;
+  }
+  .bfile .bidx {
+    flex: none; width: 22px; height: 22px; border-radius: 50%; background: #eef0f1;
+    color: var(--muted); font-size: 12px; display: flex; align-items: center; justify-content: center;
+  }
+  .bfile .bname { font-size: 13px; font-weight: 500; word-break: break-all; }
+  .bfile .bmeta, .jrow .jmeta { flex: none; font-size: 12px; color: var(--muted); }
+  .bfile .bops { flex: none; display: flex; gap: 4px; }
+  .bfile .bops button {
+    border: 1px solid var(--border); background: #fff; border-radius: 4px;
+    width: 26px; height: 26px; cursor: pointer; font-size: 12px; color: var(--muted);
+  }
+  .bfile .bops button:hover:not(:disabled) { background: #f3f4f6; color: var(--text); }
+  .bfile .bops button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .berr { font-size: 12px; color: var(--err); margin-top: 4px; word-break: break-all; }
+  .berr a { color: var(--link); }
+
+  .jrow {
+    display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px;
+    border: 1px solid var(--border); border-radius: 6px; margin-top: 8px;
+  }
+  .jrow .jst { flex: none; width: 20px; text-align: center; font-size: 13px; padding-top: 1px; }
+  .jrow .jname { font-size: 13px; word-break: break-all; }
+  .jrow .jinfo { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .jspinner {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid #e2e5e9; border-top-color: var(--text);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+
+  /* 历史记录行：复用任务行布局，整行可点开查看 */
+  .jrow.click { cursor: pointer; }
+  .jrow.click:hover { background: #f9fafb; }
+  .jrow .jopen { flex: none; font-size: 12px; color: var(--link); padding-top: 1px; }
+
+  /* ---- 覆盖率回检（P1）：徽标 + 「疑似未覆盖」明细 ---- */
+  .covline { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .cov {
+    flex: none; font-size: 11px; padding: 2px 7px; border-radius: 10px;
+    border: 1px solid currentColor;
+  }
+  .cov-ok { color: #0f6e56; background: #e1f5ee; }
+  .cov-warn { color: #854f0b; background: #faeeda; }
+  .cov-bad { color: #a32d2d; background: #fcebeb; }
+  .cov-none { color: #5f5e5a; background: #f1efe8; }
+  /* 自动补漏提示（P2）：用户有权知道文档被补过几轮、花了多少钱 */
+  .covrepair {
+    font-size: 11px; padding: 2px 7px; border-radius: 10px;
+    color: #1f4e8c; background: #e7f0fb; border: 1px solid currentColor;
+  }
+  .covtoggle { font-size: 12px; color: var(--link); cursor: pointer; }
+  .covtoggle:hover { text-decoration: underline; }
+  .covdetail { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.9; }
+  .covdetail code {
+    background: #f3f4f6; border-radius: 3px; padding: 1px 4px;
+    font-family: ui-monospace, Consolas, monospace;
+  }
+
+  .progress { height: 8px; background: #eef0f1; border-radius: 4px; overflow: hidden; margin-top: 12px; }
+  #batchProgressBar { height: 100%; width: 0; background: #2da44e; transition: width 0.4s; }
+
+  /* 总册/各节切换 tab（结果卡片内） */
+  .sec-tab {
+    border: 1px solid var(--border); background: #fff; color: var(--text);
+    border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer;
+    max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .sec-tab:hover { background: #f3f4f6; }
+  .sec-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+</style>
+</head>
+<body data-page-node-id="stFDBQhI6ikQzPgv6hBGmP">
+<div class="topbar" data-page-node-id="EviSeq3YayMH2E8loHfsU7">
+  <div class="tt" data-page-node-id="9zPFMyfnsYAdVaTv9vgi1N">
+    <h1 data-page-node-id="ERDEnu38bYt6FarTCPypQp">PPT 复习助手</h1>
+    <p data-page-node-id="grszO5qqzBwIh34jJHdBd9">导入课件 PPT，生成一份结构化复习文档</p>
+  </div>
+  <button type="button" class="btn secondary small" id="settingsBtn" data-page-node-id="4uDRYKG2kGBssCXr9nfUHe">设置</button>
+</div>
+
+<div class="container" data-page-node-id="QZJI5Hj8nH9fsPIvl5Dg2R">
+  <div class="tabs" data-page-node-id="7vMrTMoB64y3HAGniJn8zv">
+    <button type="button" class="tab active" id="tabSingle" data-page-node-id="W3ZzFmZd5AyWZIVqImAFAF">单份生成</button>
+    <button type="button" class="tab" id="tabBatch" data-page-node-id="lHBS8GNqcEPd2zM4wTcJ9p">整课批量</button>
+  </div>
+
+  <div id="singleView" data-page-node-id="BKwWeSKw97uj2IdbHUWYys">
+  <div class="card" data-page-node-id="fHmDAVySyL6NT4hWvEEXJ6">
+    <div class="drop-zone" id="dropZone" data-page-node-id="B7m7o2CNVCTDHZSyio6aZh">
+      <div id="dropIdle" data-page-node-id="QZMVERlIRfd01zPIhOYPRO">
+        <strong data-page-node-id="izDzuHn95YtSq8zqgnACQw">点击选择，或将课件文件拖到这里</strong>
+        <p data-page-node-id="qeFWI3gXb7LCCeRkrwZ8Ej">支持 .pptx / .pdf（旧版 .ppt 请先另存为 .pptx），单个文件不超过 50MB</p>
+      </div>
+      <div class="hidden" id="fileReady" data-page-node-id="g256gN3jOtsnQ6TzBltA3h">
+        <div class="file-card" data-page-node-id="TUiggSOxCbvWFYDlxlF2kJ">
+          <svg width="22" height="22" viewBox="0 0 16 16" aria-hidden="true" data-page-node-id="zQqXGeZIdcOCaXYPqwzOJ3"><circle cx="8" cy="8" r="7" fill="#1a7f37" data-page-node-id="RV41eH8GO2yEWf7UM0lpmV"/><path d="M4.6 8.3l2.2 2.3 4.6-4.8" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="KpJsXqn8rAPUIAdGJMhu2J"/></svg>
+          <div class="file-info" data-page-node-id="ux941iUr7J4flBaQvOMhMu">
+            <div class="fname" id="fName" data-page-node-id="TtR3YbwHLAomktXuGJEr8x"></div>
+            <div class="fmeta" id="fSize" data-page-node-id="RaKxNgIeybtTtO0CrZHoZE"></div>
+          </div>
+        </div>
+        <p class="ready-hint" data-page-node-id="hcub2SKnTBrGOc9Shh0l9w">已就绪，点击或拖入可更换课件</p>
+      </div>
+      <input type="file" id="fileInput" accept=".pptx,.pdf" class="hidden" data-page-node-id="ygDU841z1q9SrZqF8SZFpP" />
+    </div>
+
+    <div class="row" data-page-node-id="2b8DOFRhhS29PPsMzfEFkl">
+      <div class="field" data-page-node-id="Y0zzQ3klx1SRJKF3tv9Hgw">
+        <label data-page-node-id="7J0nAxhMJQYMB022VQM3Uo">文档类型</label>
+        <select id="template" data-page-node-id="xNl2DpzTUGZkTbgdt9PEUO">
+          <option value="复习指南" selected data-page-node-id="HIhpJzClwa2jZPboY8WKGU">复习指南</option>
+          <option value="重点总结" data-page-node-id="LBi68EakS0yPiW5kXQ5zTF">重点总结</option>
+          <option value="习题生成" data-page-node-id="5oCeH3NguyIQ0sDb4L0ICR">习题生成</option>
+        </select>
+      </div>
+      <div class="field" data-page-node-id="gs6c7AV7p1q0REaxo5QxSe">
+        <label id="styleLabel" data-page-node-id="AhiPVImCYeEKuLHEHdUAwE">输出风格</label>
+        <select id="style" data-page-node-id="KDG2Sdmc9bLdRapT1io1rh">
+          <option value="详细" selected data-page-node-id="bVHgHhKJ3ioYZU9E20EShx">详细</option>
+          <option value="精简" data-page-node-id="G6z6lfXfG2nH6PYTCQACRw">精简</option>
+          <option value="表格化" data-page-node-id="8gTimSLtzNhwZH66w1epUZ">表格化</option>
+        </select>
+      </div>
+    </div>
+
+    <label class="check" data-page-node-id="COd7rN4z6CnwyZOCGPwoMm">
+      <input type="checkbox" id="useVision" checked data-page-node-id="UkCOckT9lRzKx8mwKp1cfE" />
+      识别幻灯片里的图片内容（截图、图表、公式图），将改用视觉模型
+    </label>
+
+    <label class="check" data-page-node-id="LiSd6G5H2PxsqU0XUGZ1SH">
+      <input type="checkbox" id="useThinking" data-page-node-id="6kAjTILcHd222RFU4hXnCE" />
+      思考模式（先深度推理再输出，更准但更慢更贵——默认关闭是为了省钱）
+    </label>
+
+    <label class="check">
+      <input type="checkbox" id="useAttachCov" />
+      在文档末尾附「覆盖率自查」报告（默认不附：这份文档是拿来复习和分享的）
+    </label>
+
+    <label class="check">
+      <input type="checkbox" id="useRepair" />
+      覆盖率低于 94% 时让 AI 自动补漏（要额外调用模型；已达标时不触发、不花钱）
+    </label>
+
+    <div class="exam-block" data-page-node-id="hJjboxmhLXGf28Yfv6nGPB">
+      <span class="exam-title" data-page-node-id="vKBYUmvnpImV0ocBeVMu7Y">往年试题（可选）</span>
+      <span class="exam-hint" data-page-node-id="jr6FAM60BHeK4iqI0KA7xV">
+        粘贴或上传往年试题后，可选择把原题整理进文档（直搬），
+        或参考其题型风格生成预测题；不提供则按通用题型出模拟题。
+      </span>
+      <div class="row" data-page-node-id="tNcGlDkjHuiZVh0G0lZVG0">
+        <div class="field" style="flex: 2;" data-page-node-id="Rqga7zmrIQV3VZKUJsreo4">
+          <textarea id="examText" rows="4" placeholder="在此粘贴往年试题文本…"></textarea>
+        </div>
+      </div>
+      <div class="exam-file-row" data-page-node-id="XhReP9OPvZvSmGDdIzx1p5">
+        <button type="button" class="btn secondary small" id="examFileBtn" data-page-node-id="KxUi6faIjtuE3Lu6UvF4Gs">从文件导入（.pdf / .txt / .md）</button>
+        <input type="file" id="examFileInput" accept=".pdf,.txt,.md,.markdown" class="hidden" data-page-node-id="q6eucdQ4LpJIYhWDmVkbbx" />
+        <span class="meta" id="examFileName" data-page-node-id="ip7DTvieZsa0uFRzuMmHSi"></span>
+      </div>
+      <div class="row" data-page-node-id="0Xw1Sk0Oha5Y8UOp1XXAjJ">
+        <button type="button" class="btn secondary small" id="parseExamBtn" data-page-node-id="70kJ2GpX20GZLkplXid12X">解析试题</button>
+        <div class="field" data-page-node-id="gWERjhgX3fVYSgIwlsr2Jr">
+          <label data-page-node-id="LGSdrwspba6F1HODTqufCw">试题用法（解析成功后可选）</label>
+          <select id="examMode" disabled data-page-node-id="DKX6oJHdVBPcKc6RAuA27a">
+            <option value="direct" selected data-page-node-id="hR9v8XtrYl6rNDFgr1CvFA">直搬原题：原样整理成真题章节</option>
+            <option value="predict" data-page-node-id="ZrkvqnRJMM9zVfaB9NIAB1">参考风格：仿往年题出新预测题</option>
+          </select>
+        </div>
+      </div>
+      <div class="meta hidden" id="examMeta" data-page-node-id="fnPefLy9L1ToQDzzRmw4lJ"></div>
+    </div>
+
+    <button class="btn" id="generateBtn" disabled data-page-node-id="PNxRd4TiCX8JLQYydrztNx">生成复习文档</button>
+    <div id="status" data-page-node-id="Yo6Fcbi952f3Lhk1jzyuFr"></div>
+    <div class="meta hidden" id="fileMeta" data-page-node-id="lGRpgFPjV574PshRng87HV"></div>
+  </div>
+  </div><!-- /singleView -->
+
+  <div id="batchView" class="hidden" data-page-node-id="1WZlgOPSqtDeNFm6j3GWMh">
+    <div class="card" id="batchSetupCard" data-page-node-id="ofiwRNVRAZU2E0ZNMkymJl">
+      <h3 data-page-node-id="ST4oOb2Cg0LCEaDWoPluB9">整课批量生成</h3>
+      <div class="meta" style="margin-top:4px" data-page-node-id="QlUoJl9ZgDG8PYH5VcOs25">
+        一次选择一门课的多份课件（最多 <span id="maxFilesHint">20</span> 份），逐份生成后自动汇编成一份《整门课复习总册》。
+        任务在后台串行执行，中途可以关闭页面，稍后回来接着看进度。
+      </div>
+      <div class="drop-zone" id="batchDropZone" style="margin-top:14px" data-page-node-id="KnRbx0KZlnEQSjN2Wi4znp">
+        <div id="batchDropIdle" data-page-node-id="i08boJRxM2Jd9GpfoVeGDG">
+          <strong data-page-node-id="QDQ5pQr9zCM0C2M5n5ZEBD">点击选择，或一次拖入多份课件（.pptx / .pdf）</strong>
+          <p data-page-node-id="hU9X1RdzkKdSnyPYuY188A">支持多选；先选的在总册里排前面，选完后可上下调整顺序</p>
+        </div>
+        <input type="file" id="batchFileInput" accept=".pptx,.pdf" multiple class="hidden" data-page-node-id="CQ4pGNc2tBf51WS0zfpG0n" />
+      </div>
+      <div id="batchList" data-page-node-id="GAoMlqLlMF90L7X2xEuRvb"></div>
+      <div class="meta hidden" id="batchTotalMeta" data-page-node-id="vSLvGxZpNkuu2dQf0Mndgi"></div>
+      <div class="row" style="margin-top:14px; margin-bottom:0" data-page-node-id="mvcrHdfe2Fh1OyUukINjPg">
+        <div class="field" style="flex:2; min-width:220px" data-page-node-id="h93j0FLHGraNRb2xWjkrFX">
+          <label data-page-node-id="uNgfLzCDKvWX3nTAO3wJIL">课程名称（用作总册标题）</label>
+          <input type="text" id="batchCourseName" placeholder="例：计算机网络（留空则用第一份课件名）" data-page-node-id="5fnGdKUWsoduuLRaD92CYf" />
+        </div>
+        <div class="field" data-page-node-id="JrA2jmMATFeoDpS0YBvYVW">
+          <label data-page-node-id="LqOoRfxVWlIRDTZzegzTkh">文档类型</label>
+          <select id="bTemplate" data-page-node-id="fjACmuKKoPvX7aYS1iF7hz">
+            <option value="复习指南" selected data-page-node-id="7tDPcp7jK0lMSam5EOTtpX">复习指南</option>
+            <option value="重点总结" data-page-node-id="O4aQa7wmlE5sEQxQqxMA9z">重点总结</option>
+            <option value="习题生成" data-page-node-id="CMwsK9TAIA5P7ZGCKtdT4B">习题生成</option>
+          </select>
+        </div>
+        <div class="field" data-page-node-id="EMhAwqri1yZMhRDuwih1Lw">
+          <label id="bStyleLabel" data-page-node-id="uxspUR00jwTqFPWvECZqrB">输出风格</label>
+          <select id="bStyle" data-page-node-id="XPOlYcBWW1blVNPhAZG78G">
+            <option value="详细" selected data-page-node-id="l2V0zVLGXCHnJOMUT9BEdf">详细</option>
+            <option value="精简" data-page-node-id="15M6i2hKqyghzy8qfvFFAX">精简</option>
+            <option value="表格化" data-page-node-id="LzFPbb124mpwQA3LB2DaUN">表格化</option>
+          </select>
+        </div>
+      </div>
+      <label class="check" style="margin-top:12px" data-page-node-id="EStMNSWJHZ3GV9p5lHU7bC">
+        <input type="checkbox" id="bUseVision" checked data-page-node-id="GgbDhud735eoGmI7RFRunu" />
+        识别幻灯片里的图片内容（同单份模式：有图时走视觉模型）
+      </label>
+      <label class="check" data-page-node-id="VHlBYxhlsHDegdNSrCSFah">
+        <input type="checkbox" id="bThinking" data-page-node-id="3bsqOF9WM7J1rfZJONzOIo" />
+        思考模式（更准但更慢更贵；批量按份数叠加费用，默认关闭省钱）
+      </label>
+      <label class="check">
+        <input type="checkbox" id="bAttachCov" />
+        在总册末尾附「覆盖率自查」报告（默认不附：总册是拿来复习和分享的）
+      </label>
+      <label class="check">
+        <input type="checkbox" id="bRepair" />
+        覆盖率不足的课件让 AI 自动补漏（同上；只对触发的那些份计费）
+      </label>
+      <div style="margin-top:14px" data-page-node-id="54tjsQpfEZiWGJZJw6tN8C">
+        <button class="btn" id="batchStartBtn" disabled data-page-node-id="6NzC3APPEIoAoINgE9yon8">开始批量生成</button>
+      </div>
+      <div id="batchStatus" style="font-size:13px; color:var(--muted); margin-top:10px" data-page-node-id="xPArLfMD1L3BG3ue7vx6I4"></div>
+
+      <div id="batchHistory" class="hidden"
+           style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border)" data-page-node-id="nCHFtkt6KAVA9ZqnVftStW">
+        <div class="meta" style="margin-bottom:2px" data-page-node-id="2f1RdxmiCfqJ7il0QybWE9">历史记录（点一行即可查看已生成的复习内容）</div>
+        <div id="historyList" data-page-node-id="SmMZY2ozFzMSrrAER3HzuU"></div>
+      </div>
+    </div>
+
+    <div class="card hidden" id="batchRunCard" data-page-node-id="DrE6yPK7e7QNUVMTXV48wY">
+      <h3 id="batchRunTitle" data-page-node-id="XS87WoTNyvWlABiXLRdzwX"></h3>
+      <div class="progress" data-page-node-id="69C9cFETG95Qt3cOtqcfCs"><div id="batchProgressBar" data-page-node-id="1VTNDgFgtyGoW7Prr7HYpR"></div></div>
+      <div class="meta" id="batchRunMeta" data-page-node-id="mj2XSvNKZ5BgTNe6l5I2k2"></div>
+      <div id="batchJobList" style="margin-top:10px" data-page-node-id="MBpFzBP4VtDz7GQRcErBKz"></div>
+      <div class="row" style="margin-top:16px; margin-bottom:0" data-page-node-id="U1JhaHy0CzWcKbk0426oUa">
+        <button class="btn secondary hidden" id="batchRetryBtn" data-page-node-id="bOmIFDHTC0ZX2pvFlAHEJX">重试失败项</button>
+        <button class="btn secondary" id="batchCancelBtn" data-page-node-id="p0rUhgd2sSQ7VYcEj44ocR">停止</button>
+        <button class="btn secondary hidden" id="batchNewBtn" data-page-node-id="cPH3oP6GZDv1ZEKsLHq9gP">返回新建</button>
+      </div>
+      <div id="batchRunStatus" style="font-size:13px; color:var(--muted); margin-top:10px" data-page-node-id="06O1oIcnJUcNzxg1aKGl4J"></div>
+    </div>
+  </div>
+
+  <div class="card hidden" id="resultCard" data-page-node-id="uDK5ElSexXRjVF7zDQ0JgM">
+    <h3 id="resultTitle" data-page-node-id="8IDFY1A5il657epM4LiEEk">复习文档</h3>
+    <div class="toolbar" data-page-node-id="3gEmzTAGcfK4jClWHuyCpr">
+      <button id="copyBtn" data-page-node-id="kF70PjKBoC4eBfOiuBtuAi">复制</button>
+      <button id="downloadBtn" data-page-node-id="KjWN5975fBSehHGc6Of2QT">下载 .md</button>
+      <button id="downloadHtmlBtn" data-page-node-id="RCyoOxztNV46crqMVzU0nU">下载 .html</button>
+    </div>
+    <div class="toolbar hidden" id="batchSectionBar" data-page-node-id="n9Z915FSUxMvkgoQIUjexh"></div>
+    <div id="covBox" class="hidden"></div>
+    <div id="markdown" data-page-node-id="VlSo55WXYkAQ2AtBL48evo"></div>
+  </div>
+</div>
+
+<!-- 生成进度 / 结果弹窗 -->
+<div class="modal-mask hidden" id="modalMask" data-page-node-id="bxheoApeqEXwAtGMd8DngZ">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" data-page-node-id="nTquhrPC7NCBffVNlCFFof">
+    <div class="m-ico" id="mIcoSpin" data-page-node-id="I9c5UT9jGTWzXsGuVrYazv"><div class="spinner" data-page-node-id="QpfjbooPP19mIrrDHWGk5K"></div></div>
+    <div class="m-ico hidden" id="mIcoOk" data-page-node-id="h2rFeH8t3SBbGBP7w8JmJ2">
+      <svg width="38" height="38" viewBox="0 0 16 16" aria-hidden="true" data-page-node-id="AS5sAZ9reWvVnehe4fIZ87"><circle cx="8" cy="8" r="7" fill="#1a7f37" data-page-node-id="v9RI1S6HkXWNFWPFxOvRUz"/><path d="M4.6 8.3l2.2 2.3 4.6-4.8" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="x859O7Q8PvjMGouWZbvM1d"/></svg>
+    </div>
+    <div class="m-ico hidden" id="mIcoFail" data-page-node-id="wx0elk0zVt9YmPbnedh0bm">
+      <svg width="38" height="38" viewBox="0 0 16 16" aria-hidden="true" data-page-node-id="2to83N7Gu3WFRK7mfcMCX7"><circle cx="8" cy="8" r="7" fill="#d1242f" data-page-node-id="4yk2vxRpeFtirdz4QIXVHI"/><path d="M5.4 5.4l5.2 5.2M10.6 5.4l-5.2 5.2" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" data-page-node-id="SpVS82AWhbRRbFG8wH1R7B"/></svg>
+    </div>
+    <div class="m-title" id="modalTitle" data-page-node-id="b5DslWtNZppwpZ07AJCFdd">正在生成复习文档</div>
+    <div class="m-text" id="modalText" data-page-node-id="62gaGuGkMNpsODnMFQEEV7"></div>
+    <div class="m-sub" id="modalSub" data-page-node-id="xJSOEGmHZfLGQOybjgqTP7"></div>
+    <div class="m-timer" id="modalTimer" data-page-node-id="tWwahWgcz6xEsHkGqg5mfW"></div>
+    <div class="m-foot hidden" id="modalFoot" data-page-node-id="uHklaPMgQlAFNsxbUrtiDK">
+      <button type="button" class="btn" id="modalRetryBtn" data-page-node-id="l8KAnvEghzMWAvAKsxS2r5">重试</button>
+      <button type="button" class="btn secondary" id="modalCloseBtn" data-page-node-id="83tCxVlNccD0TfsYe9jxLD">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- API Key 配置面板：首次使用强制弹出，之后通过顶栏「设置」打开 -->
+<div class="modal-mask hidden" id="cfgMask" data-page-node-id="pzilZCh10ZkugjLH8OhRp8">
+  <div class="modal config" role="dialog" aria-modal="true" aria-labelledby="cfgTitle" data-page-node-id="vUnunoRwVSD3wPVZJjYnsE">
+    <div class="cfg-title" id="cfgTitle" data-page-node-id="LgLfimxLlr07N5RaaPmOdb">配置 AI 服务</div>
+    <div class="cfg-sub" id="cfgSub" data-page-node-id="AIuNW5kjOd6YIzVg8BS63V">第一次使用：选一家服务商 → 粘贴你的 API Key → 点「验证并保存」</div>
+    <div class="field" data-page-node-id="Z0dnYITuecyxpnZUnCH93X">
+      <label for="cfgProvider" data-page-node-id="vTrv5Vf55AlFJmXWGBvHIk">AI 服务商</label>
+      <select id="cfgProvider" data-page-node-id="S1ukJoso7UMnsu60EsbfCW"></select>
+      <div class="opt-note" id="cfgProviderNote" data-page-node-id="fKUNeUnfgoFGUsiEp9ZRjb"></div>
+    </div>
+    <div class="field hidden" id="cfgTierField" data-page-node-id="CIIve6ezObWVAOJD0eVFmw">
+      <label data-page-node-id="SV6V1uxUNxm03BBX9OmdCp">档位</label>
+      <div class="tier-opts" id="cfgTierOpts" data-page-node-id="MYrhY7N6HD0ZypfwVj2Pdr"></div>
+    </div>
+    <div class="field" data-page-node-id="3M6SAmEBlxlrqURiNB7LNT">
+      <label for="cfgKey" data-page-node-id="r6cZRhmMa9e80sANb5EVp9">API Key</label>
+      <div class="pwd-row" data-page-node-id="oj5idX487R950jEKJnGIiH">
+        <input type="password" id="cfgKey" placeholder="粘贴你的 API Key（自动去掉首尾空格）" autocomplete="off" spellcheck="false" data-page-node-id="g2FazEe0kL5kHC4NCbw4FU" />
+        <button type="button" class="btn secondary small" id="cfgTogglePwd" data-page-node-id="ZXFFIUcqk1EEXCNF7Cp8TL">显示</button>
+      </div>
+    </div>
+    <button class="btn" id="cfgVerifyBtn" data-page-node-id="XvwKBFGzz6U9IGLfTrOdOL">验证并保存</button>
+    <div id="cfgStatus" class="cfg-status" data-page-node-id="wWuKs8fmcqmCgKScaIvKAE"></div>
+    <details class="help" id="helpRegister" data-page-node-id="sd8zi7n8udnmPivLU3Jxxq">
+      <summary data-page-node-id="fG6ct2xG9fXVoXPTcd3cC1">还没有 Key？30 秒注册教程</summary>
+      <div id="cfgTutorial" data-page-node-id="EY7mCXA2ehxzbt05NxilMu"></div>
+    </details>
+    <details class="help" data-page-node-id="JAAsuROQNs9H8S36dhPIGj">
+      <summary data-page-node-id="MB6jfFDvq66Q5mlPCyENAm">Key 是什么？怎么复制完整？</summary>
+      <p data-page-node-id="VWnVYwi3YtvnsmFGICtJFI">Key 相当于软件替你去调用 AI 的「钥匙」，按用量计费，是一长串字符（多数家是 <b data-page-node-id="ZbGdQxa2FiCOBpGY4tvp3g">sk-</b> 开头，智谱家的不是）。</p>
+      <p data-page-node-id="aiFU4stdS9p5gYVYaVBtDD">复制：在平台点 Key 右侧的「复制」按钮 → 回到这里右键粘贴（Ctrl+V）。<b data-page-node-id="34uYM94vJUWUqVcnltZ6Cm">别用鼠标拖选复制</b>——容易漏掉头尾，验证会报「Key 无效」。</p>
+      <p class="warn" data-page-node-id="YWPaznDU9ByOyHeCGgnOkG">Key 等价于钱：不要发班级群、不要截图晒给别人。</p>
+    </details>
+    <details class="help" data-page-node-id="YYFvopD3tmvsD6j3EzNjVJ">
+      <summary data-page-node-id="jdnM1qj5yvdU8sdg1xgtET">常见问题</summary>
+      <p data-page-node-id="DrElDE4cp7Cdz8E7u6saHt"><b data-page-node-id="4doNhEwhkvqQU3vZwEb004">一定要花钱吗？</b> 不需要。各家新用户基本都送免费额度（DeepSeek、通义等），生成一份复习文档的用量很小，免费额度通常够用很久。</p>
+      <p data-page-node-id="6f79bpXyKZjoNtiL7r8Ura"><b data-page-node-id="iCFKcGS7lGCL3UHx78J1fY">Key 存在哪里？会不会泄露？</b> 只保存在你自己电脑的本地配置文件里，软件不联网上传任何信息。</p>
+      <p data-page-node-id="dDyb4VgWhSZigT3iKvo7kv"><b data-page-node-id="aOFpDMDkF8VlgpmiX6mNcH">填错了 / 想换一家？</b> 验证时会提示具体原因；重新在设置里选服务商换 Key 即可。各家的 Key 不通用。</p>
+    </details>
+    <div class="cfg-foot" data-page-node-id="dkByghuwEvpPu1wKHhW9sl">
+      <span class="cfg-saved" id="cfgCurrent" data-page-node-id="YyxnBKw0ucYt6FFDrRw2L1"></span>
+      <button type="button" class="btn secondary" id="cfgCloseBtn" data-page-node-id="1fg6PfumOsNp4WQOUOpU5S">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 通用确认弹窗：思考模式开启提醒等「操作前确认」场景 -->
+<div class="modal-mask hidden" id="confirmMask" data-page-node-id="ojqAgTaWBZBPyeWxTLgPVH">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" data-page-node-id="b5rfn4LBQCSeS7AHOcq4K8">
+    <div class="m-title" id="confirmTitle" data-page-node-id="yhUfuGKJL7Oer0Y99NtAzs"></div>
+    <div class="m-text" id="confirmText" data-page-node-id="eH41OAWPXkdmK9eYwEYCHt"></div>
+    <div class="m-foot" data-page-node-id="wmz9eNfFw5gm8BA2wlOv0z">
+      <button type="button" class="btn secondary" id="confirmCancelBtn" data-page-node-id="nfgeFIqMNyFCjyPlp8GVIa">取消</button>
+      <button type="button" class="btn" id="confirmOkBtn" data-page-node-id="8wfy3kyxaieM9yRDAY1zAy">确定</button>
+    </div>
+  </div>
+</div>
+
+<footer data-page-node-id="OWMw0xrCXYtuENwFchrz4F">仅供学习使用</footer>
+
+<script>
+  let currentFile = null;
+  let currentMarkdown = ""; // 原始 Markdown 原文，供复制/下载用
+  let examId = null;        // 已解析的往年试题 id
+  let examChars = 0;        // 往年试题字符数（成本预估用）
+  let examFile = null;      // 用户选的往年试题文件
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $("status");
+
+  function setStatus(msg, type = "") {
+    statusEl.textContent = msg;
+    statusEl.className = type;
+  }
+
+  // 把后端文案里的 URL 渲染成可点链接：先转义再链接化，最后 DOMPurify 兜底。
+  // 只用于后端可控文案（错误提示等），用户输入/模型输出一律走 textContent。
+  function linkifyHtml(text) {
+    const esc = String(text)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+    const linked = esc.replace(
+      /(https?:\/\/[^\s<>"']+)/g,
+      '<a href="$1" target="_blank" rel="noopener">$1</a>'
+    );
+    return DOMPurify.sanitize(linked);
+  }
+
+  // ---- 生成进度 / 结果弹窗 ----
+  const modalMask = $("modalMask");
+  const modalTextEl = $("modalText");
+  const modalSubEl = $("modalSub");
+  const modalTimerEl = $("modalTimer");
+  let modalTimerId = null;
+  let modalStartAt = 0;
+  let modalExpectedSec = 90;   // 当前阶段的预计秒数，用于超时提示
+  let slowTipShown = false;
+
+  function fmtSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+    return (bytes / 1024 / 1024).toFixed(1) + " MB";
+  }
+
+  // 打开进度弹窗并开始计时
+  function openProgressModal(text, sub, expectedSec) {
+    modalMask.classList.remove("hidden");
+    $("mIcoSpin").classList.remove("hidden");
+    $("mIcoOk").classList.add("hidden");
+    $("mIcoFail").classList.add("hidden");
+    $("modalFoot").classList.add("hidden");
+    $("modalTitle").textContent = "正在生成复习文档";
+    $("modalTimer").classList.remove("hidden");
+    setPhase(text, sub, expectedSec);
+    if (modalTimerId) clearInterval(modalTimerId);
+    modalStartAt = Date.now();
+    modalTimerId = setInterval(tickModalTimer, 500);
+    tickModalTimer();
+  }
+
+  // 进程内切换阶段文案（extract → generate），计时不中断
+  function setPhase(text, sub, expectedSec) {
+    modalTextEl.textContent = text;
+    modalSubEl.textContent = sub || "";
+    if (expectedSec) modalExpectedSec = expectedSec;
+    slowTipShown = false;
+  }
+
+  function tickModalTimer() {
+    const secs = Math.floor((Date.now() - modalStartAt) / 1000);
+    const mm = Math.floor(secs / 60);
+    const ss = String(secs % 60).padStart(2, "0");
+    modalTimerEl.textContent = `已用时 ${mm}:${ss}`;
+    // 明显超过预计时间仍无结果时，给一句提示而不是让用户干等
+    if (!slowTipShown && secs >= Math.max(150, modalExpectedSec + 60)) {
+      slowTipShown = true;
+      modalSubEl.textContent =
+        (modalSubEl.textContent ? modalSubEl.textContent + " " : "") +
+        "已超过通常耗时，若长时间无响应可关闭窗口后重试。";
+    }
+  }
+
+  // 收尾：成功（可自动关闭并展示文档）或失败（可手动关闭）。
+  // showClose=true 时成功也保留"关闭"按钮，用于下载结果这类需要用户
+  // 看清路径再关的提示；生成流程不带该参数，成功后由调用方自动关闭。
+  // html=true 时 text 按安全 HTML 渲染（支持余额不足等提示里的充值链接）。
+  // retryable=true 且失败时额外显示「重试」按钮（瞬时网络/服务端错误专用）。
+  function showResultModal(ok, title, text, showClose = false, html = false, retryable = false) {
+    if (modalTimerId) { clearInterval(modalTimerId); modalTimerId = null; }
+    modalMask.classList.remove("hidden"); // 不经进度弹窗直接调用的场景（下载提示）也要保证可见
+    $("modalTitle").textContent = title;
+    if (html) modalTextEl.innerHTML = linkifyHtml(text);
+    else modalTextEl.textContent = text;
+    modalSubEl.textContent = "";
+    $("mIcoSpin").classList.add("hidden");
+    $("mIcoOk").classList.toggle("hidden", !ok);
+    $("mIcoFail").classList.toggle("hidden", ok);
+    $("modalTimer").classList.add("hidden");
+    // 仅失败的瞬时错误显示重试；成功态或参数类错误（4xx）不给
+    $("modalRetryBtn").classList.toggle("hidden", ok || !retryable);
+    $("modalFoot").classList.toggle("hidden", ok && !showClose);
+  }
+
+  function closeModal() {
+    modalMask.classList.add("hidden");
+    if (modalTimerId) { clearInterval(modalTimerId); modalTimerId = null; }
+  }
+  $("modalCloseBtn").addEventListener("click", closeModal);
+
+  // ---- 文档类型 × 输出风格联动 ----
+  // 习题生成不提供「表格化」（题目不是汇总表），风格文案也换成卷面语境；
+  // 复习指南/重点总结保留三种通用风格（表格化对提炼重点、对比易错点仍有用）。
+  // 单份页与批量页各有一套「文档类型/输出风格」下拉，必须都接上这套联动——
+  // 批量页当初漏接，导致选了习题生成仍能看到「表格化」（2026-09-11 用户实测反馈）。
+  const STYLE_OPTIONS = {
+    "复习指南": [["详细", "详细"], ["精简", "精简"], ["表格化", "表格化"]],
+    "重点总结": [["详细", "详细"], ["精简", "精简"], ["表格化", "表格化"]],
+    "习题生成": [
+      ["详细", "详解版：每题附答案与解析"],
+      ["精简", "精简版：答案速查，不展开长篇解析"],
+    ],
+  };
+  const STYLE_LABELS = { "习题生成": "卷面风格" };
+
+  function wireStyleOptions(templateSel, styleSel, labelEl) {
+    function rebuild() {
+      const tpl = templateSel.value;
+      const opts = STYLE_OPTIONS[tpl] || STYLE_OPTIONS["复习指南"];
+      const prev = styleSel.value;
+      styleSel.innerHTML = "";
+      for (const [val, text] of opts) {
+        const o = document.createElement("option");
+        o.value = val;
+        o.textContent = text;
+        styleSel.appendChild(o);
+      }
+      // 当前值不在新选项里（例如从「表格化」切到习题生成）时落到第一项
+      if (!opts.some(([val]) => val === prev)) styleSel.value = opts[0][0];
+      labelEl.textContent = STYLE_LABELS[tpl] || "输出风格";
+    }
+    templateSel.addEventListener("change", rebuild);
+    rebuild(); // 页面加载即对齐一次
+  }
+
+  wireStyleOptions($("template"), $("style"), $("styleLabel"));
+  wireStyleOptions($("bTemplate"), $("bStyle"), $("bStyleLabel"));
+
+  // 上传区交互
+  const dropZone = $("dropZone");
+  const fileInput = $("fileInput");
+  dropZone.addEventListener("click", () => fileInput.click());
+  dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("dragging"); });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragging"));
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault(); dropZone.classList.remove("dragging");
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener("change", () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+  // ---- 往年试题：选择文件 / 解析 ----
+  const examFileBtn = $("examFileBtn");
+  const examFileInput = $("examFileInput");
+  examFileBtn.addEventListener("click", () => examFileInput.click());
+  examFileInput.addEventListener("change", () => {
+    examFile = examFileInput.files.length ? examFileInput.files[0] : null;
+    $("examFileName").textContent = examFile ? `已选：${examFile.name}` : "";
+  });
+
+  $("parseExamBtn").addEventListener("click", async () => {
+    const textValue = $("examText").value.trim();
+    if (!examFile && !textValue) {
+      setStatus("请先粘贴试题文本或选择试题文件", "error");
+      return;
+    }
+    const btn = $("parseExamBtn");
+    btn.disabled = true;
+    setStatus("正在解析试题...");
+    try {
+      const form = new FormData();
+      if (examFile) form.append("file", examFile);
+      else form.append("text", textValue);
+      const res = await fetch("/api/exam", { method: "POST", body: form });
+      if (!res.ok) throw new Error((await res.json()).detail || "解析失败");
+      const data = await res.json();
+      examId = data.exam_id;
+      examChars = data.chars || 0;
+      const meta = $("examMeta");
+      meta.textContent = `已载入《${data.filename}》 ${data.chars} 字符 · 预览：${data.preview}${data.chars > 200 ? "…" : ""}`;
+      meta.classList.remove("hidden");
+      $("examMode").disabled = false;
+      setStatus("试题已就绪，可开始生成", "success");
+    } catch (err) {
+      examId = null;
+      examChars = 0;
+      setStatus(err.message, "error");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // 把 API 错误转成带 HTTP status 的 Error：fetch 网络层失败（无 status）与
+  // 服务端 5xx 属于瞬时错误、可一键重试；4xx 是内容/配置问题，重试无意义。
+  async function throwApiError(res, fallback) {
+    let detail = fallback;
+    try { detail = (await res.json()).detail || fallback; } catch { /* 非 JSON 响应 */ }
+    const e = new Error(detail);
+    e.status = res.status;
+    throw e;
+  }
+
+  // 支持的课件格式：与后端 extractor.SUPPORTED_EXTENSIONS 保持一致
+  const COURSEWARE_RE = /\.(pptx|pdf)$/i;
+
+  async function handleFile(file) {
+    if (!COURSEWARE_RE.test(file.name)) {
+      setStatus("请选择 .pptx / .pdf 课件；旧版 .ppt 请先另存为 .pptx", "error");
+      return;
+    }
+    currentFile = file;
+    // 整个虚线框切换成「已就绪」实线卡片，反馈要明显到不可能看漏
+    dropZone.classList.add("ready");
+    $("dropIdle").classList.add("hidden");
+    $("fileReady").classList.remove("hidden");
+    $("fName").textContent = file.name;
+    $("fSize").textContent = `${fmtSize(file.size)} · PPTX`;
+    $("fileInput").value = ""; // 允许再次选择同一个文件时也触发 change
+    $("fileMeta").classList.add("hidden");
+    $("generateBtn").disabled = false;
+    setStatus("", "");
+  }
+
+  // 完整生成流程：上传解析 → 成本预估 → AI 生成。抽成命名函数，
+  // 「生成」按钮与失败弹窗的「重试」按钮共用（重试复用已选文件/试题，不丢状态）。
+  async function startGenerate() {
+    if (!currentFile) return;
+    const btn = $("generateBtn");
+    btn.disabled = true;
+    const useVision = $("useVision").checked;
+    const hasExam = examId != null;
+    const isPredict = hasExam && $("examMode").value === "predict";
+
+    // 第一步：上传并解析课件（快，几秒）
+    openProgressModal("正在上传并解析课件内容…", "", 40);
+    try {
+      const form = new FormData();
+      form.append("file", currentFile);
+      const res = await fetch("/api/extract", { method: "POST", body: form });
+      if (!res.ok) await throwApiError(res, "上传失败");
+      const extracted = await res.json();
+      const displayName = extracted.filename.split("/").pop();
+      $("fileMeta").textContent =
+        `《${displayName}》 共 ${extracted.total_pages} 页 · ` +
+        `${extracted.image_count} 张图 · 备注 ${extracted.notes_chars} 字`;
+      $("fileMeta").classList.remove("hidden");
+
+      // 第二步：AI 生成（40~90s，耗时大头）。按实际情况给出动作与预计时长
+      const imgCount = extracted.image_count;
+      const hasVision = useVision && imgCount > 0;
+      let genText, genSub, expectedSec;
+      if (hasVision) {
+        genText = `正在读取 ${imgCount} 张图片并撰写文档`;
+        genSub = "图片识别较慢，预计 1~2 分钟，请勿关闭窗口";
+        expectedSec = 110;
+      } else {
+        genText = "正在根据课件内容撰写文档";
+        genSub = "预计 30 秒 ~ 1 分钟，请勿关闭窗口";
+        expectedSec = 60;
+      }
+      if (hasExam) {
+        if (isPredict) {
+          genText += "，并仿照往年题风格出预测题";
+          genSub = "预计 1~2 分钟，请勿关闭窗口";
+          expectedSec = 120;
+        } else {
+          genText += "，并整理往年试题";
+          genSub = "预计 1 分钟左右，请勿关闭窗口";
+          expectedSec = 90;
+        }
+      }
+
+      // 调用模型前先粗估费用——把「大概花多少」提前告诉用户，余额不足就不该是意外
+      let costSuffix = "";
+      try {
+        const totalChars = (extracted.slides || []).reduce(
+          (s, sl) => s + (sl.text || "").length + (sl.notes || "").length, 0
+        );
+        const estRes = await fetch("/api/settings/estimate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chars: totalChars,
+            image_count: imgCount,
+            use_vision: useVision,
+            thinking: $("useThinking").checked,
+            exam_chars: examChars,
+            style: $("style").value,
+            pages: extracted.total_pages || 0,
+          }),
+        });
+        if (estRes.ok) {
+          const est = await estRes.json();
+          if (est.cost_text) costSuffix = ` · 本次预计花费${est.cost_text}`;
+        }
+      } catch { /* 预估失败不影响主流程 */ }
+      genSub += costSuffix;
+
+      setPhase(genText, genSub, expectedSec);
+
+      const genRes = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: extracted.filename,
+          template: $("template").value,
+          style: $("style").value,
+          use_vision: useVision,
+          thinking: $("useThinking").checked,
+          attach_coverage: $("useAttachCov").checked,
+          enable_repair: $("useRepair").checked,
+          ...(examId ? { exam_id: examId, exam_mode: $("examMode").value } : {}),
+        }),
+      });
+      if (!genRes.ok) await throwApiError(genRes, "生成失败");
+      const data = await genRes.json();
+
+      const parts = [];
+      if (data.exam_used) parts.push("已结合往年试题");
+      if (data.used_vision) parts.push(`读取了 ${data.image_count} 张图片`);
+      const tail = parts.length ? `（${parts.join(" · ")}）` : "";
+      const truncNote = data.truncated
+        ? "输出过长被截断，文档末尾（通常是题目章节）可能缺失，建议改用精简风格重试。"
+        : "";
+      // 弹成功结果 → 1 秒后自动关闭，滚动到文档
+      showResultModal(true, data.truncated ? "已生成（内容可能不完整）" : "生成完成", `文档已生成${tail}`);
+      setTimeout(() => {
+        closeModal();
+        $("batchSectionBar").classList.add("hidden");  // 清掉批量结果的节切换残留
+        $("resultTitle").textContent = "复习文档";
+        renderMarkdown(data.markdown);
+        renderCoverageBox(
+          $("covBox"), data.coverage, data.coverage_note, repairText(data.repair)
+        );
+        setStatus(truncNote ? `生成完成，但${truncNote.replace("。", "")}${tail}` : `生成完成${tail}`, data.truncated ? "error" : "success");
+      }, 1000);
+    } catch (err) {
+      const raw = (err && err.message) || "生成失败";
+      // 网络层失败（fetch 无 status）或服务端 5xx → 瞬时问题，给「重试」；
+      // 4xx（未配 key / PPT 无内容 / 文件丢失等）是配置或内容问题，重试无意义
+      const retryable = !err.status || err.status >= 500;
+      const friendly = /failed to fetch|networkerror|load failed|aborted/i.test(raw)
+        ? "网络连接中断，请点下方「重试」再试；若持续失败请检查网络连接。"
+        : raw;
+      // html=true：错误文案可能带充值链接/服务商指引，渲染为可点链接
+      showResultModal(false, "生成失败", friendly, false, true, retryable);
+      setStatus(friendly, "error");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  $("generateBtn").addEventListener("click", startGenerate);
+  // 失败弹窗「重试」：直接重跑整条流程（失败请求不计费，重复点击安全）
+  $("modalRetryBtn").addEventListener("click", () => startGenerate());
+
+  // ---- 通用确认弹窗（思考模式开启提醒等「操作前确认」场景）----
+  let confirmOkCb = null;
+  let confirmCancelCb = null;
+  function openConfirm(title, text, onOk, onCancel) {
+    $("confirmTitle").textContent = title;
+    $("confirmText").textContent = text;
+    $("confirmMask").classList.remove("hidden");
+    confirmOkCb = onOk || null;
+    confirmCancelCb = onCancel || null;
+  }
+  function closeConfirm() {
+    $("confirmMask").classList.add("hidden");
+    confirmOkCb = null;
+    confirmCancelCb = null;
+  }
+  $("confirmOkBtn").addEventListener("click", () => {
+    const cb = confirmOkCb;
+    closeConfirm();
+    if (cb) cb();
+  });
+  $("confirmCancelBtn").addEventListener("click", () => {
+    const cb = confirmCancelCb;
+    closeConfirm();
+    if (cb) cb();
+  });
+
+  // 思考模式：默认关闭（省钱）。勾选时提醒费用与耗时增加；点「取消」则撤回勾选。
+  const useThinkingEl = $("useThinking");
+  useThinkingEl.addEventListener("change", () => {
+    if (!useThinkingEl.checked) return;
+    openConfirm(
+      "开启思考模式？",
+      "开启后模型会先深度推理再输出，生成质量更高（尤其习题生成、真题整理），\n但费用约增加 30%~50%，耗时明显变长。仍要开启吗？",
+      () => setStatus("思考模式已开启：本次生成会更慢、更贵，追求省钱可取消勾选", ""),
+      () => { useThinkingEl.checked = false; }  // 取消 → 撤回勾选，保持默认省钱态
+    );
+  });
+
+  // ---- 覆盖率回检展示（P1）----
+  // 判据是术语级的**词面**比对（见 app/services/coverage.py），阈值 94/86 按已知
+  // 质量的参照文档标定。对外一律说「疑似未覆盖」——术语没出现也可能只是换了个说法，
+  // 所以清单里必定附源课件页码，让用户自己一眼确认。
+  const COV_MIN_TERMS = 8;   // 与后端 MIN_TERMS_FOR_PERCENT 一致：术语太少时百分比是噪声
+  function covReliable(cov) {
+    return cov.reliable !== false && (cov.total_terms || 0) >= COV_MIN_TERMS;
+  }
+  function covClass(percent, reliable) {
+    if (!reliable) return "cov-none";
+    if (percent >= 94) return "cov-ok";
+    if (percent >= 86) return "cov-warn";
+    return "cov-bad";
+  }
+  // P2：把补漏记录翻成一句人话。空串 = 没触发或没改善（不显示，别噪音）。
+  // 「回滚」要如实说——用户得知道"试过但没变好"。
+  function repairText(repair) {
+    if (!repair || !repair.triggered) return "";
+    const before = repair.trigger_percent >= 0 ? repair.trigger_percent : 0;
+    const after = repair.final_percent >= 0 ? repair.final_percent : 0;
+    if (after <= before) {
+      return repair.rolled_back ? "已尝试自动补漏但未改善，保留原文档" : "";
+    }
+    return (
+      "已自动补漏 " + (repair.rounds || []).length + " 轮：" +
+      before + "% → " + after + "%，¥" + (repair.total_cost_yuan || 0).toFixed(3)
+    );
+  }
+  function repairBadge(text) {
+    if (!text) return null;
+    const b = document.createElement("span");
+    b.className = "covrepair";
+    b.textContent = text;
+    return b;
+  }
+
+  function covBadge(cov) {
+    const rel = covReliable(cov);
+    const b = document.createElement("span");
+    b.className = "cov " + covClass(cov.percent, rel);
+    b.textContent = rel ? `覆盖 ${cov.percent}%` : "覆盖样本不足";
+    return b;
+  }
+  // 「疑似未覆盖」明细行（不含外层容器），单份直接有数据、批量按需取
+  function covDetailLines(cov) {
+    const frag = document.createDocumentFragment();
+    const missing = cov.missing_detail || [];
+    if (!missing.length) return frag;
+    const hint = document.createElement("div");
+    hint.textContent = "术语级比对，对照源课件页码核对即可：「疑似」不等于一定漏，可能只是换了个说法。";
+    frag.appendChild(hint);
+    missing.forEach((m) => {
+      const line = document.createElement("div");
+      const code = document.createElement("code");
+      code.textContent = m.term;
+      line.appendChild(code);
+      line.appendChild(document.createTextNode(` 源课件第 ${m.page} 页`));
+      frag.appendChild(line);
+    });
+    return frag;
+  }
+  function covToggleText(n, open) {
+    return `疑似未覆盖 ${n} 项 ${open ? "▴" : "▾"}`;
+  }
+  // 单份结果：覆盖率就在生成响应里，直接渲染
+  function renderCoverageBox(box, cov, note, repText) {
+    box.innerHTML = "";
+    if (!cov) {
+      // 没有数字时不能只是沉默：解释一句，否则用户以为功能坏了
+      if (note) {
+        box.classList.remove("hidden");
+        const n = document.createElement("div");
+        n.className = "covdetail";
+        n.textContent = note;
+        box.appendChild(n);
+      } else {
+        box.classList.add("hidden");
+      }
+      return;
+    }
+    box.classList.remove("hidden");
+    const line = document.createElement("div");
+    line.className = "covline";
+    line.appendChild(covBadge(cov));
+    const rep = repairBadge(repText);   // P2：补漏提示跟在覆盖率徽标后面
+    if (rep) line.appendChild(rep);
+    const detail = document.createElement("div");
+    detail.className = "covdetail hidden";
+    detail.appendChild(covDetailLines(cov));
+    if (!(cov.missing_terms || 0)) {
+      const none = document.createElement("span");
+      none.className = "covtoggle";
+      none.style.color = "var(--muted)";
+      none.textContent = "无疑似遗漏";
+      line.appendChild(none);
+    } else {
+      const t = document.createElement("span");
+      t.className = "covtoggle";
+      t.textContent = covToggleText(cov.missing_terms, false);
+      t.addEventListener("click", () => {
+        const open = !detail.classList.toggle("hidden");
+        t.textContent = covToggleText(cov.missing_terms, open);
+      });
+      line.appendChild(t);
+    }
+    box.appendChild(line);
+    box.appendChild(detail);
+  }
+  // 批量某节：batch.json 只带摘要，明细要按需向 /coverage/{idx} 取（点开才请求）
+  function attachJobCoverage(col, j) {
+    const cov = {
+      percent: j.coverage_percent, total_terms: j.coverage_total || 0,
+      missing_terms: j.coverage_missing || 0,
+      reliable: (j.coverage_total || 0) >= COV_MIN_TERMS,
+    };
+    const line = document.createElement("div");
+    line.className = "covline";
+    line.appendChild(covBadge(cov));
+    const rep = repairBadge(j.repair_summary || "");   // P2：后端已压成一行
+    if (rep) line.appendChild(rep);
+    const holder = document.createElement("div");
+    holder.className = "covdetail hidden";
+    if (!cov.missing_terms) {
+      const none = document.createElement("span");
+      none.className = "covtoggle";
+      none.style.color = "var(--muted)";
+      none.textContent = "无疑似遗漏";
+      line.appendChild(none);
+    } else {
+      const t = document.createElement("span");
+      t.className = "covtoggle";
+      t.textContent = covToggleText(cov.missing_terms, false);
+      let loaded = false;
+      t.addEventListener("click", async () => {
+        if (!loaded) {
+          loaded = true;
+          t.textContent = "加载中…";
+          try {
+            const res = await fetch(`/api/batch/${batchId}/coverage/${j.idx}`);
+            holder.innerHTML = "";
+            if (res.ok) holder.appendChild(covDetailLines(await res.json()));
+            else holder.textContent = "这一节没有覆盖率明细。";
+          } catch { holder.textContent = "加载失败，请重试。"; }
+        }
+        const open = !holder.classList.toggle("hidden");
+        t.textContent = covToggleText(cov.missing_terms, open);
+      });
+      line.appendChild(t);
+    }
+    col.appendChild(line);
+    col.appendChild(holder);
+  }
+
+  function renderMarkdown(md, opts = {}) {
+    currentMarkdown = md;
+    // marked 渲染 Markdown，DOMPurify 清洗掉模型输出里的危险 HTML/链接
+    const html = DOMPurify.sanitize(marked.parse(md));
+    $("markdown").innerHTML = html;
+    $("resultCard").classList.remove("hidden");
+    if (opts.scroll !== false) $("resultCard").scrollIntoView({ behavior: "smooth" });
+  }
+
+  $("copyBtn").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(currentMarkdown);
+      setStatus("已复制到剪贴板", "success");
+    } catch { setStatus("复制失败，请手动复制", "error"); }
+  });
+
+  $("downloadBtn").addEventListener("click", async () => {
+    await saveFile("复习文档.md", currentMarkdown, "text/markdown;charset=utf-8");
+  });
+  $("downloadHtmlBtn").addEventListener("click", async () => {
+    const bodyHtml = DOMPurify.sanitize(marked.parse(currentMarkdown));
+    const html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>复习文档</title>
+<style>body{font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;max-width:860px;margin:0 auto;padding:32px 20px;line-height:1.8;color:#1f2328;font-size:15px}h1{font-size:24px;border-bottom:1px solid #d8dee4;padding-bottom:8px;font-weight:600}h2{font-size:19px;margin-top:26px}h3{font-size:16px;margin-top:18px}table{border-collapse:collapse;margin:12px 0;width:100%}th,td{border:1px solid #d8dee4;padding:7px 10px;text-align:left;vertical-align:top}th{background:#f5f6f7}code{background:#eef0f1;padding:1px 5px;border-radius:4px;font-family:Consolas,monospace}pre{background:#1f2328;color:#e6e6e6;padding:12px 14px;border-radius:6px;overflow-x:auto}pre code{background:none;color:inherit;padding:0}blockquote{border-left:3px solid #c0c6cc;margin:10px 0;padding:2px 12px;color:#656d76}img{max-width:100%}ul,ol{padding-left:24px}li{margin:3px 0}</style></head><body>${bodyHtml}</body></html>`;
+    await saveFile("复习文档.html", html, "text/html;charset=utf-8");
+  });
+
+  function download(content, filename, type) {
+    const blob = new Blob([content], { type });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  async function saveFile(filename, content, mime) {
+    // pywebview（桌面壳）默认禁用下载，<a download> 点击会被静默吞掉——
+    // 改走 js_api 让 Python 端写入系统"下载"目录，并把完整路径显示出来。
+    // 普通浏览器直连则用原生 Blob 下载（浏览器自带下载反馈）。
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.save_document) {
+      let res;
+      try {
+        res = await window.pywebview.api.save_document(filename, content);
+      } catch (err) {
+        // 弹窗提示而不是状态栏小字——小字在按钮下方，用户可能看不到而重复点击
+        showResultModal(false, "保存失败", `写入文件时出错：${err && err.message ? err.message : "未知错误"}`);
+        return;
+      }
+      if (res && res.ok) {
+        showResultModal(true, "保存成功", `文件已保存到：\n${res.path}`, true);
+      } else {
+        const msg = res && res.error ? res.error : "保存失败，请重试";
+        showResultModal(false, "保存失败", msg);
+      }
+      return;
+    }
+    download(content, filename, mime);
+  }
+
+  // ---- API Key 设置（首次使用强制配置，之后顶栏「设置」可改）----
+  const cfgMask = $("cfgMask");
+  const cfgProviderSel = $("cfgProvider");
+  // 各服务商的注册教程（纯文案，按 provider_id 取；未收录的显示通用兜底）
+  const REGISTER_GUIDE = {
+    deepseek: [
+      "打开 platform.deepseek.com，用手机号注册并登录。",
+      "左侧菜单点「API Keys」→「创建 API Key」。",
+      "复制生成的一串 key（sk- 开头），粘贴到上面的输入框。",
+      "新用户送免费额度，日常复习用量下能用很久。",
+    ],
+    zhipu: [
+      "打开 open.bigmodel.cn，用手机号注册并完成实名认证。",
+      "进入「API 密钥」页面 →「创建 API Key」。",
+      "复制生成的 key 粘贴即可（智谱的 key 不是 sk- 开头，是普通字符，复制完整就行）。",
+    ],
+    moonshot: [
+      "打开 platform.moonshot.cn，注册并登录。",
+      "左侧「API Key 管理」→ 新建 API Key。",
+      "复制 key（sk- 开头），粘贴到上面的输入框。",
+    ],
+    qwen: [
+      "打开 bailian.console.aliyun.com，用支付宝 / 淘宝账号登录。",
+      "首次进入按提示开通「百炼」服务（免费开通，可能需实名）。",
+      "右上角头像 →「API-KEY」→ 创建新的 API-KEY → 复制（sk- 开头）。",
+      "新用户有免费额度。",
+    ],
+  };
+  let cfgForced = false;   // true = 首次强制（不提供取消按钮）
+  let cfgProviders = [];
+  let currentStatus = null;
+  let cfgTier = "";        // 当前面板选中的档位 id（仅多档服务商如智谱；单档为空）
+
+  function cfgMeta() {
+    return cfgProviders.find((p) => p.id === cfgProviderSel.value);
+  }
+
+  // 取某档位的展示元数据；单档服务商（无 tiers）返回 null
+  function tierMetaOf(meta, tierId) {
+    if (!meta || !meta.tiers || !meta.tiers.length) return null;
+    return meta.tiers.find((t) => t.id === tierId) || meta.tiers[0];
+  }
+
+  function cfgRenderNote() {
+    const meta = cfgMeta();
+    if (!meta) return;
+    const t = tierMetaOf(meta, cfgTier);
+    const model = (t && t.model) || meta.model;
+    const visionModel = (t && t.vision_model) || meta.vision_model;
+    const note = (t && t.note) || meta.note;
+    const priceNote = (t && t.price_note) || meta.price_note;
+    const readImg = visionModel
+      ? `读图模型 ${visionModel}`
+      : "不支持读图（有图的 PPT 将只按文字生成）";
+    const box = $("cfgProviderNote");
+    box.textContent = "";
+    if (t) {
+      const tierLine = document.createElement("div");
+      tierLine.className = "cfg-tier-label";
+      tierLine.textContent = `档位：${t.label}`;
+      box.appendChild(tierLine);
+    }
+    const line1 = document.createElement("div");
+    line1.textContent =
+      `文本模型 ${model} · ${readImg}${note ? "。" + note : ""}`;
+    box.appendChild(line1);
+    if (priceNote) {
+      const line2 = document.createElement("div");
+      line2.className = "cfg-price";
+      line2.textContent = "价格：" + priceNote;
+      box.appendChild(line2);
+    }
+    if (meta.topup_url) {
+      const line3 = document.createElement("div");
+      const a = document.createElement("a");
+      a.href = meta.topup_url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = `充值 / 余额管理（${meta.name} 官方控制台）`;
+      line3.appendChild(a);
+      box.appendChild(line3);
+    }
+  }
+
+  // 渲染档位 radio 组（只有 providers 响应带 tiers 的服务商显示）
+  function cfgRenderTier() {
+    const meta = cfgMeta();
+    const field = $("cfgTierField");
+    const box = $("cfgTierOpts");
+    if (!meta || !meta.tiers || !meta.tiers.length) {
+      field.classList.add("hidden");
+      box.innerHTML = "";
+      cfgTier = "";
+      return;
+    }
+    field.classList.remove("hidden");
+    if (!meta.tiers.some((t) => t.id === cfgTier)) {
+      cfgTier = meta.default_tier && meta.tiers.some((t) => t.id === meta.default_tier)
+        ? meta.default_tier
+        : meta.tiers[0].id;
+    }
+    box.innerHTML = "";
+    for (const t of meta.tiers) {
+      const label = document.createElement("label");
+      label.className = "check";
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "cfgTier";
+      radio.value = t.id;
+      radio.checked = t.id === cfgTier;
+      radio.addEventListener("change", () => onTierPick(t, radio));
+      label.appendChild(radio);
+      label.appendChild(document.createTextNode(t.label));
+      box.appendChild(label);
+    }
+  }
+
+  // 档位切换：切到免费档先弹确认（免费池高峰超载 / 需实名，0.6.4 实测教训）
+  function onTierPick(t, radio) {
+    if (t.free) {
+      openConfirm(
+        "切换为免费档？",
+        "免费档标价 0 元，但免费模型是共享资源池：高峰期经常超载（可能验证/生成失败），"
+        + "且需要该平台账户完成实名认证。赶时间或要稳定出文档建议留在付费档"
+        + "（新用户通常有免费 tokens 可抵扣，不一定真花钱）。",
+        () => { cfgTier = t.id; cfgRenderNote(); cfgSetStatus(""); },
+        () => cfgRenderTier()  // 取消：按原 cfgTier 重渲染勾选态
+      );
+    } else {
+      cfgTier = t.id;
+      cfgRenderNote();
+      cfgSetStatus("");
+    }
+  }
+
+  function cfgSetStatus(msg, type = "") {
+    const el = $("cfgStatus");
+    el.textContent = msg;
+    el.className = "cfg-status " + type;
+  }
+
+  function cfgRenderNote() {
+    const meta = cfgProviders.find((p) => p.id === cfgProviderSel.value);
+    if (!meta) return;
+    const readImg = meta.vision_supported
+      ? `读图模型 ${meta.vision_model}`
+      : "不支持读图（有图的 PPT 将只按文字生成）";
+    const box = $("cfgProviderNote");
+    box.textContent = "";
+    const line1 = document.createElement("div");
+    line1.textContent =
+      `文本模型 ${meta.model} · ${readImg}${meta.note ? "。" + meta.note : ""}`;
+    box.appendChild(line1);
+    if (meta.price_note) {
+      const line2 = document.createElement("div");
+      line2.className = "cfg-price";
+      line2.textContent = "价格：" + meta.price_note;
+      box.appendChild(line2);
+    }
+    if (meta.topup_url) {
+      const line3 = document.createElement("div");
+      const a = document.createElement("a");
+      a.href = meta.topup_url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = `充值 / 余额管理（${meta.name} 官方控制台）`;
+      line3.appendChild(a);
+      box.appendChild(line3);
+    }
+  }
+
+  function cfgRenderTutorial() {
+    const steps = REGISTER_GUIDE[cfgProviderSel.value] || [];
+    const box = $("cfgTutorial");
+    box.innerHTML = "";
+    if (!steps.length) return;
+    const ol = document.createElement("ol");
+    for (const s of steps) {
+      const li = document.createElement("li");
+      li.textContent = s;
+      ol.appendChild(li);
+    }
+    box.appendChild(ol);
+  }
+
+  async function cfgLoadProviders(keepValue, keepTier) {
+    try {
+      const res = await fetch("/api/settings/providers");
+      const data = await res.json();
+      cfgProviders = data.providers || [];
+      cfgProviderSel.innerHTML = "";
+      for (const p of cfgProviders) {
+        const o = document.createElement("option");
+        o.value = p.id;
+        o.textContent = p.name;
+        cfgProviderSel.appendChild(o);
+      }
+      if (keepValue && cfgProviders.some((p) => p.id === keepValue)) cfgProviderSel.value = keepValue;
+      // 初始档位：已配置且当前服务商多档 → 用已存档位，否则默认档
+      const meta = cfgMeta();
+      if (meta && meta.tiers && meta.tiers.length) {
+        const has = (id) => meta.tiers.some((t) => t.id === id);
+        cfgTier = keepTier && has(keepTier)
+          ? keepTier
+          : (meta.default_tier && has(meta.default_tier) ? meta.default_tier : meta.tiers[0].id);
+      } else {
+        cfgTier = "";
+      }
+      cfgRenderTier();
+      cfgRenderNote();
+      cfgRenderTutorial();
+    } catch { cfgSetStatus("加载服务商列表失败，请刷新重试", "error"); }
+  }
+
+  function cfgProviderName(id) {
+    const p = cfgProviders.find((x) => x.id === id);
+    return p ? p.name : id;
+  }
+
+  function updateCfgCurrent(st) {
+    if (!st) return;
+    const parts = [];
+    if (st.configured) {
+      parts.push(`当前：${st.provider_name}`);
+      if (st.tier_label) parts.push(st.tier_label);
+      if (st.api_key_tail) parts.push(`Key ${st.api_key_tail}`);
+      if (st.source === "env") parts.push("（来自 .env，保存后将改用你填的 Key）");
+    } else {
+      parts.push("尚未配置");
+    }
+    $("cfgCurrent").textContent = parts.join(" · ");
+    if (st.configured) {
+      $("cfgKey").placeholder = `已配置${st.api_key_tail ? " Key " + st.api_key_tail : ""}，粘贴新 Key 可替换`;
+    }
+  }
+
+  function openCfg(force) {
+    cfgForced = !!force;
+    $("cfgTitle").textContent = force ? "先配置 AI 服务，才能开始使用" : "AI 服务设置";
+    $("cfgSub").textContent = force
+      ? "生成复习文档需要调用 AI 服务：选一家 → 粘贴你的 API Key → 验证并保存。"
+      : "更换服务商、档位或 Key 后点「验证并保存」，立即生效。";
+    $("cfgCloseBtn").classList.toggle("hidden", force);
+    cfgSetStatus("", "");
+    cfgMask.classList.remove("hidden");
+    cfgLoadProviders(
+      currentStatus && currentStatus.configured && currentStatus.provider_id
+        ? currentStatus.provider_id
+        : null,
+      currentStatus && currentStatus.configured ? currentStatus.tier || null : null
+    );
+    updateCfgCurrent(currentStatus);
+  }
+
+  function closeCfg() { cfgMask.classList.add("hidden"); }
+
+  $("settingsBtn").addEventListener("click", () => openCfg(false));
+  $("cfgCloseBtn").addEventListener("click", closeCfg);
+  cfgProviderSel.addEventListener("change", () => {
+    // 换服务商后档位重置为该家默认档（智谱=付费）
+    const meta = cfgMeta();
+    cfgTier = meta && meta.tiers && meta.tiers.length
+      ? (meta.default_tier || meta.tiers[0].id)
+      : "";
+    cfgRenderTier();
+    cfgRenderNote();
+    cfgRenderTutorial();
+  });
+
+  $("cfgTogglePwd").addEventListener("click", () => {
+    const inp = $("cfgKey");
+    const show = inp.type === "password";
+    inp.type = show ? "text" : "password";
+    $("cfgTogglePwd").textContent = show ? "隐藏" : "显示";
+  });
+
+  $("cfgVerifyBtn").addEventListener("click", async () => {
+    const pid = cfgProviderSel.value;
+    const key = $("cfgKey").value.trim();
+    if (!key) { cfgSetStatus("请先在上方粘贴你的 API Key", "error"); return; }
+    const btn = $("cfgVerifyBtn");
+    btn.disabled = true;
+    cfgSetStatus("正在验证 Key 并保存…", "busy");
+    try {
+      const vRes = await fetch("/api/settings/verify", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider_id: pid, api_key: key, tier: cfgTier }),
+      });
+      const v = await vRes.json();
+      if (!vRes.ok || !v.ok) {
+        cfgSetStatus(v.message || "验证失败，请重试", "error");
+        return;
+      }
+      const sRes = await fetch("/api/settings/save", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider_id: pid, api_key: key, tier: cfgTier }),
+      });
+      const saved = await sRes.json();
+      if (!sRes.ok || !saved.ok) {
+        cfgSetStatus(saved.message || "保存失败", "error");
+        return;
+      }
+      cfgSetStatus("验证通过，已保存。", "success");
+      const stRes = await fetch("/api/settings/status");
+      currentStatus = await stRes.json();
+      updateCfgCurrent(currentStatus);
+      $("cfgKey").value = "";
+      const name = cfgProviderName(pid);
+      setTimeout(() => {
+        closeCfg();
+        if (cfgForced) setStatus(`已配置 ${name}，上传课件即可开始`, "success");
+      }, 700);
+    } catch (err) {
+      cfgSetStatus("网络错误：" + (err && err.message ? err.message : "未知错误"), "error");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---- 整课批量生成 ----
+  const batchFiles = [];        // {file: File, peek: {total_pages,image_count,est_cost_yuan} | {error} | null}
+  let batchId = null;           // 进行中/待查看的批任务 id
+  let batchTimer = null;        // 2s 轮询
+  let batchMasterText = "";     // 总册原文缓存
+  let maxBatchFiles = 20;       // 单批上限，以 /api/batches 的 max_files 为准（启动时拉取）
+
+  function switchTab(tab) {
+    const single = tab === "single";
+    $("tabSingle").classList.toggle("active", single);
+    $("tabBatch").classList.toggle("active", !single);
+    $("singleView").classList.toggle("hidden", !single);
+    $("batchView").classList.toggle("hidden", single);
+  }
+  $("tabSingle").addEventListener("click", () => switchTab("single"));
+  $("tabBatch").addEventListener("click", () => switchTab("batch"));
+
+  function bSetStatus(msg, type = "", html = false) {
+    const el = $("batchStatus");
+    if (html) el.innerHTML = linkifyHtml(msg);
+    else el.textContent = msg;
+    el.style.color = type === "error" ? "var(--err)" : type === "success" ? "var(--ok)" : "var(--muted)";
+  }
+
+  const bDropZone = $("batchDropZone"), bInput = $("batchFileInput");
+  bDropZone.addEventListener("click", () => bInput.click());
+  bDropZone.addEventListener("dragover", (e) => { e.preventDefault(); bDropZone.classList.add("dragging"); });
+  bDropZone.addEventListener("dragleave", () => bDropZone.classList.remove("dragging"));
+  bDropZone.addEventListener("drop", (e) => {
+    e.preventDefault(); bDropZone.classList.remove("dragging");
+    batchAddFiles(e.dataTransfer.files);
+  });
+  bInput.addEventListener("change", () => { if (bInput.files.length) batchAddFiles(bInput.files); bInput.value = ""; });
+
+  function batchAddFiles(list) {
+    for (const f of list) {
+      if (!COURSEWARE_RE.test(f.name)) { bSetStatus(`《${f.name}》不是 .pptx / .pdf 课件，已跳过`, "error"); continue; }
+      if (batchFiles.length >= maxBatchFiles) { bSetStatus(`一次最多 ${maxBatchFiles} 份课件，超出部分已忽略`, "error"); break; }
+      if (batchFiles.some((x) => x.file.name === f.name && x.file.size === f.size)) continue; // 去重
+      batchFiles.push({ file: f, peek: null });
+    }
+    renderBatchList();
+    batchPeekAll();
+  }
+
+  function bOpBtn(label, fn, disabled) {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = label; b.disabled = disabled;
+    b.addEventListener("click", fn);
+    return b;
+  }
+
+  function renderBatchList() {
+    const box = $("batchList");
+    box.innerHTML = "";
+    batchFiles.forEach((item, i) => {
+      const row = document.createElement("div");
+      row.className = "bfile";
+      const idx = document.createElement("span");
+      idx.className = "bidx"; idx.textContent = i + 1;
+      const col = document.createElement("div");
+      col.style.cssText = "flex:1;min-width:0;";
+      const name = document.createElement("div");
+      name.className = "bname"; name.textContent = item.file.name;
+      col.appendChild(name);
+      if (item.peek && item.peek.error) {
+        const e = document.createElement("div");
+        e.className = "berr"; e.textContent = item.peek.error;
+        col.appendChild(e);
+      }
+      const meta = document.createElement("span");
+      meta.className = "bmeta";
+      meta.textContent = item.peek
+        ? (item.peek.error ? "—" : `${item.peek.total_pages} 页 · ${item.peek.image_count} 图 · 约 ¥${Number(item.peek.est_cost_yuan).toFixed(2)}`)
+        : "分析中…";
+      const ops = document.createElement("span");
+      ops.className = "bops";
+      ops.appendChild(bOpBtn("↑", () => { [batchFiles[i - 1], batchFiles[i]] = [batchFiles[i], batchFiles[i - 1]]; renderBatchList(); }, i === 0));
+      ops.appendChild(bOpBtn("↓", () => { [batchFiles[i + 1], batchFiles[i]] = [batchFiles[i], batchFiles[i + 1]]; renderBatchList(); }, i === batchFiles.length - 1));
+      ops.appendChild(bOpBtn("✕", () => { batchFiles.splice(i, 1); renderBatchList(); }, false));
+      row.appendChild(idx); row.appendChild(col); row.appendChild(meta); row.appendChild(ops);
+      box.appendChild(row);
+    });
+    $("batchStartBtn").disabled = batchFiles.length === 0;
+    const total = $("batchTotalMeta");
+    const okFiles = batchFiles.filter((x) => x.peek && !x.peek.error);
+    if (batchFiles.length && okFiles.length === batchFiles.length) {
+      const cost = okFiles.reduce((s, x) => s + (x.peek.est_cost_yuan || 0), 0);
+      const pages = okFiles.reduce((s, x) => s + (x.peek.total_pages || 0), 0);
+      total.textContent = `共 ${batchFiles.length} 份 · ${pages} 页 · 整批预计花费约 ¥${cost.toFixed(2)}（以实际账单为准）`;
+      total.classList.remove("hidden");
+    } else {
+      total.classList.add("hidden");
+    }
+  }
+
+  // 逐份速览（只提取不生成）：拿到页数/图片/单份预估，串行做，避免并发解析大文件
+  async function batchPeekAll() {
+    for (const item of batchFiles) {
+      if (item.peek) continue;
+      try {
+        const form = new FormData();
+        form.append("file", item.file);
+        form.append("use_vision", $("bUseVision").checked);
+        form.append("thinking", $("bThinking").checked);
+        form.append("style", $("bStyle").value);
+        const res = await fetch("/api/batch/peek", { method: "POST", body: form });
+        const d = await res.json();
+        item.peek = res.ok ? d : { error: d.detail || "分析失败" };
+      } catch { item.peek = { error: "网络错误，分析失败" }; }
+      renderBatchList();
+    }
+  }
+
+  $("batchStartBtn").addEventListener("click", () => {
+    if (!batchFiles.length) return;
+    const est = batchFiles.filter((x) => x.peek && !x.peek.error)
+      .reduce((s, x) => s + (x.peek.est_cost_yuan || 0), 0);
+    const n = batchFiles.length;
+    const minMin = n, maxMin = n * ($("bUseVision").checked ? 2.5 : 1.5);
+    openConfirm(
+      "开始批量生成？",
+      `共 ${n} 份课件，整批预计花费约 ¥${est.toFixed(2)}（勾思考会更贵），\n` +
+      `串行生成约需 ${minMin}~${Math.round(maxMin)} 分钟。可随时停止，\n生成到一半的总册也能下载。`,
+      () => doStartBatch(),
+      () => {}
+    );
+  });
+
+  async function doStartBatch() {
+    $("batchStartBtn").disabled = true;
+    bSetStatus("正在创建批量任务…");
+    try {
+      const form = new FormData();
+      batchFiles.forEach((x) => form.append("files", x.file));
+      form.append("template", $("bTemplate").value);
+      form.append("style", $("bStyle").value);
+      form.append("use_vision", $("bUseVision").checked);
+      form.append("thinking", $("bThinking").checked);
+      form.append("attach_coverage", $("bAttachCov").checked);
+      form.append("enable_repair", $("bRepair").checked);
+      form.append("course_name", $("batchCourseName").value.trim());
+      const res = await fetch("/api/batch/start", { method: "POST", body: form });
+      const d = await res.json();
+      if (!res.ok) { bSetStatus(d.detail || "创建失败", "error", true); $("batchStartBtn").disabled = false; return; }
+      batchId = d.batch_id;
+      enterBatchRun(d);
+    } catch (err) {
+      bSetStatus("网络错误：" + (err && err.message ? err.message : "未知错误"), "error");
+      $("batchStartBtn").disabled = false;
+    }
+  }
+
+  function enterBatchRun(detail) {
+    $("batchSetupCard").classList.add("hidden");
+    $("batchRunCard").classList.remove("hidden");
+    $("batchRunTitle").textContent = `《${detail.course_name}》复习总册`;
+    bSetStatus("");
+    // 先启动轮询再渲染：即便首屏渲染因字段缺失抛错，轮询也会在 2 秒内把界面纠正过来。
+    // （此前顺序相反，渲染一抛错就永远轮询不起来，界面停在 0/N。）
+    startBatchPolling();
+    renderBatchStatus(detail);
+  }
+
+  function startBatchPolling() {
+    if (batchTimer) clearInterval(batchTimer);
+    batchTimer = setInterval(pollBatchOnce, 2000);
+    pollBatchOnce();
+  }
+
+  function stopBatchPolling() {
+    if (batchTimer) { clearInterval(batchTimer); batchTimer = null; }
+  }
+
+  async function pollBatchOnce() {
+    if (!batchId) return;
+    try {
+      const res = await fetch(`/api/batch/${batchId}`);
+      if (!res.ok) { stopBatchPolling(); bSetStatus("查询任务状态失败，请刷新页面", "error"); return; }
+      const d = await res.json();
+      renderBatchStatus(d);
+      if (d.status !== "running") {
+        stopBatchPolling();
+        onBatchFinished(d);
+      }
+    } catch { /* 瞬时网络错误：下一轮再试 */ }
+  }
+
+  const J_ICON = { waiting: "⋯", done: "✓", error: "✗" };
+  const J_TEXT = { waiting: "等待中", running: "生成中", done: "完成", error: "失败" };
+  const B_TEXT = { running: "正在生成", done: "已完成", partial: "部分完成", paused: "已暂停（网络不稳）", cancelled: "已停止" };
+
+  function renderBatchStatus(d) {
+    const total = d.total || 1;
+    $("batchProgressBar").style.width = Math.round((d.done / total) * 100) + "%";
+    const money = [];
+    if (d.spent_yuan > 0) money.push(`已花费约 ¥${d.spent_yuan}`);
+    if (d.est_total_yuan > 0) money.push(`整批预估约 ¥${d.est_total_yuan}`);
+    $("batchRunMeta").textContent =
+      `${B_TEXT[d.status] || d.status} ${d.done}/${d.total}` + (money.length ? " · " + money.join(" · ") : "");
+
+    const box = $("batchJobList");
+    box.innerHTML = "";
+    if (d.coverage_note) {   // 档位不适用：说明一句，避免「一个徽标都没有」被当成故障
+      const n = document.createElement("div");
+      n.className = "covdetail";
+      n.textContent = d.coverage_note;
+      box.appendChild(n);
+    }
+    (d.jobs || []).forEach((j) => {
+      const row = document.createElement("div");
+      row.className = "jrow";
+      const st = document.createElement("span");
+      st.className = "jst";
+      if (j.status === "running") st.innerHTML = '<span class="jspinner"></span>';
+      else st.textContent = J_ICON[j.status] || "⋯";
+      st.style.color = j.status === "done" ? "var(--ok)" : j.status === "error" ? "var(--err)" : "var(--muted)";
+      const col = document.createElement("div");
+      col.style.cssText = "flex:1;min-width:0;";
+      const name = document.createElement("div");
+      name.className = "jname";
+      name.textContent = `第 ${j.idx} 节 · ${j.name}`;
+      col.appendChild(name);
+      if (j.status === "done") {
+        const info = document.createElement("div");
+        info.className = "jinfo";
+        info.textContent = `${j.total_pages} 页 · 约 ¥${j.cost_yuan}${j.cost_is_estimate ? "（估）" : ""}`
+          + (j.warning ? " · ⚠️ 内容被截断（已达单次输出上限），可改用「精简」档或单独生成这一份" : "");
+        col.appendChild(info);
+      }
+      // 覆盖率徽标（coverage_percent < 0 表示没算出来/旧任务 → 不显示，不伪装成 0%）
+      // 两重门控：
+      // ① 档位必须适用（coverage_note 为空）——不是「复习指南/详细」时覆盖率没有意义，
+      //    即使某份带着历史/回填数据也不能显示徽标，否则会用 59% 这种数字误导用户；
+      // ② 必须显式判 null——JS 里 `null >= 0` 为 true，只写 >= 0 会显示「覆盖 null%」。
+      if (!d.coverage_note && j.status === "done"
+          && j.coverage_percent != null && j.coverage_percent >= 0) {
+        attachJobCoverage(col, j);
+      }
+      if (j.error) {
+        const e = document.createElement("div");
+        e.className = "berr";
+        e.innerHTML = linkifyHtml(j.error);  // 后端友好文案可能带充值链接
+        col.appendChild(e);
+      }
+      const meta = document.createElement("span");
+      meta.className = "jmeta"; meta.textContent = J_TEXT[j.status] || "";
+      row.appendChild(st); row.appendChild(col); row.appendChild(meta);
+      box.appendChild(row);
+    });
+
+    const running = d.status === "running";
+    $("batchCancelBtn").classList.toggle("hidden", !running);
+    const resumable = !running && (d.error > 0 || d.waiting > 0);
+    $("batchRetryBtn").classList.toggle("hidden", !resumable);
+    $("batchRetryBtn").textContent = d.waiting > 0 ? "继续生成" : "重试失败项";
+    $("batchNewBtn").classList.toggle("hidden", running);
+  }
+
+  async function onBatchFinished(d) {
+    if (d.done > 0) {
+      await loadBatchResult(d);
+      if (d.status === "partial" || d.status === "paused")
+        $("batchRunStatus").textContent = "有未完成的课件：修复问题后点「重试失败项 / 继续生成」，总册会随之更新。";
+    } else {
+      $("batchRunStatus").textContent = "本批没有成功生成的课件；请检查网络与 Key 后重试。";
+      $("resultCard").classList.add("hidden");
+    }
+  }
+
+  async function loadBatchResult(d) {
+    try {
+      const res = await fetch(`/api/batch/${batchId}/master`);
+      if (!res.ok) throw new Error();
+      batchMasterText = await res.text();
+    } catch { batchMasterText = ""; }
+    renderBatchSectionBar(d);
+    $("covBox").classList.add("hidden");  // 单份的覆盖率块不适用于批量视图
+    $("resultTitle").textContent = `《${d.course_name}》复习总册`;
+    await showBatchContent(null);
+    $("resultCard").scrollIntoView({ behavior: "smooth" });
+  }
+
+  function renderBatchSectionBar(d) {
+    const bar = $("batchSectionBar");
+    bar.innerHTML = "";
+    bar.classList.remove("hidden");
+    const mk = (label, idx) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "sec-tab"; b.textContent = label;
+      b.dataset.idx = idx == null ? "master" : String(idx);
+      b.addEventListener("click", () => showBatchContent(idx));
+      return b;
+    };
+    bar.appendChild(mk("总册", null));
+    (d.jobs || []).filter((j) => j.status === "done")
+      .forEach((j) => bar.appendChild(mk(`第${j.idx}节 ${j.name.replace(COURSEWARE_RE, "")}`, j.idx)));
+  }
+
+  async function showBatchContent(idx) {
+    document.querySelectorAll("#batchSectionBar .sec-tab").forEach((b) =>
+      b.classList.toggle("active", idx == null ? b.dataset.idx === "master" : b.dataset.idx === String(idx)));
+    if (idx == null) {
+      if (batchMasterText) renderMarkdown(batchMasterText, { scroll: false });
+      return;
+    }
+    try {
+      const res = await fetch(`/api/batch/${batchId}/doc/${idx}`);
+      if (!res.ok) throw new Error();
+      renderMarkdown(await res.text(), { scroll: false });
+    } catch { setStatus("获取该节内容失败", "error"); }
+  }
+
+  $("batchRetryBtn").addEventListener("click", async () => {
+    try {
+      const res = await fetch(`/api/batch/${batchId}/retry`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
+      });
+      const d = await res.json();
+      if (!res.ok) { $("batchRunStatus").textContent = d.detail || "重试失败"; return; }
+      $("batchRunStatus").textContent = "";
+      renderBatchStatus(d);
+      startBatchPolling();
+    } catch { $("batchRunStatus").textContent = "网络错误，请稍后重试"; }
+  });
+
+  $("batchCancelBtn").addEventListener("click", async () => {
+    try {
+      await fetch(`/api/batch/${batchId}/cancel`, { method: "POST" });
+      $("batchRunStatus").textContent = "已请求停止：当前这份做完后就停（已完成的部分会保留，可下载）。";
+      pollBatchOnce();
+    } catch { $("batchRunStatus").textContent = "网络错误"; }
+  });
+
+  $("batchNewBtn").addEventListener("click", () => {
+    stopBatchPolling();
+    batchId = null;
+    batchMasterText = "";
+    $("batchRunCard").classList.add("hidden");
+    $("batchSetupCard").classList.remove("hidden");
+    $("batchSectionBar").classList.add("hidden");
+    $("batchRunStatus").textContent = "";
+    $("batchStartBtn").disabled = batchFiles.length === 0;
+    loadHistory();  // 回到新建页时刷新历史（刚跑完的那批要出现在列表里）
+  });
+
+  // ---- 历史记录：查看以往生成过的总册与各节 ----
+  // 产物落在 output/<batch_id>/（总册 + 每节 doc.md），状态存 batch.json，
+  // 服务重启也不丢。「返回新建」会清空结果卡片，所以另给一个入口重新打开。
+  const H_STATUS = {
+    running: "进行中", done: "已完成", partial: "部分完成",
+    paused: "已暂停", cancelled: "已停止",
+  };
+
+  async function loadHistory() {
+    try {
+      const res = await fetch("/api/batches");
+      const { batches, max_files } = await res.json();
+      if (max_files) {                       // 上限由后端下发，前端不留第二份常量
+        maxBatchFiles = max_files;
+        const hint = $("maxFilesHint");
+        if (hint) hint.textContent = String(max_files);
+      }
+      // 排除当前正在查看/运行的那批，避免和上方视图重复
+      renderHistory((batches || []).filter((b) => b.batch_id !== batchId));
+    } catch { /* 拉不到就留空，不打扰用户 */ }
+  }
+
+  function renderHistory(items) {
+    const box = $("historyList");
+    const card = $("batchHistory");
+    box.innerHTML = "";
+    if (!items.length) { card.classList.add("hidden"); return; }
+    card.classList.remove("hidden");
+
+    items.forEach((b) => {
+      const openable = (b.done || 0) > 0;  // 全失败的没有内容可看
+      const row = document.createElement("div");
+      row.className = "jrow" + (openable ? " click" : "");
+
+      const col = document.createElement("div");
+      col.style.cssText = "flex:1;min-width:0;";
+      const name = document.createElement("div");
+      name.className = "jname";
+      name.textContent = `《${b.course_name || "未命名课程"}》`;
+      col.appendChild(name);
+
+      const bits = [H_STATUS[b.status] || b.status, `完成 ${b.done}/${b.total}`];
+      if (b.spent_yuan > 0) bits.push(`约 ¥${b.spent_yuan}`);
+      if (b.updated_at) bits.push(String(b.updated_at).slice(0, 16));
+      const meta = document.createElement("div");
+      meta.className = "jinfo";
+      meta.textContent = bits.join(" · ");
+      col.appendChild(meta);
+      row.appendChild(col);
+
+      const tail = document.createElement("span");
+      tail.className = "jopen";
+      tail.textContent = openable ? "查看 →" : "无内容";
+      row.appendChild(tail);
+
+      if (openable) row.addEventListener("click", () => openHistoryBatch(b.batch_id));
+      box.appendChild(row);
+    });
+  }
+
+  async function openHistoryBatch(id) {
+    bSetStatus("正在打开历史记录…");
+    try {
+      const res = await fetch(`/api/batch/${id}`);
+      if (!res.ok) { bSetStatus("打开失败：任务不存在或已被清理", "error"); return; }
+      const d = await res.json();
+      stopBatchPolling();
+      batchId = d.batch_id;
+      switchTab("batch");
+
+      if (d.status === "running") {          // 还在跑：进运行视图接着跟进度
+        enterBatchRun(d);
+        return;
+      }
+      if (!d.done) { bSetStatus("该任务没有成功生成的课件，无法查看", "error"); return; }
+      bSetStatus("");
+      $("batchSetupCard").classList.add("hidden");
+      $("batchRunCard").classList.remove("hidden");
+      $("batchRunTitle").textContent = `《${d.course_name}》复习总册`;
+      renderBatchStatus(d);                  // 按状态显隐「停止/重试/返回新建」
+      await loadBatchResult(d);
+    } catch { bSetStatus("网络错误，打开失败", "error"); }
+  }
+
+  // 刷新恢复：有进行中/暂停的批任务时，自动回到批量视图接着跟进度
+  async function checkRunningBatch() {
+    try {
+      const res = await fetch("/api/batches");
+      const { batches } = await res.json();
+      const act = (batches || []).find((b) => b.status === "running" || b.status === "paused");
+      if (!act) return;
+      batchId = act.batch_id;
+      switchTab("batch");
+      const d = await (await fetch(`/api/batch/${batchId}`)).json();
+      enterBatchRun(d);
+    } catch { /* 忽略：不影响正常使用 */ }
+  }
+
+  // 启动时检查是否已配置 key；没有则强制弹出配置面板
+  (async function checkSettingsOnBoot() {
+    try {
+      const res = await fetch("/api/settings/status");
+      currentStatus = await res.json();
+      updateCfgCurrent(currentStatus);
+      if (!currentStatus.configured) openCfg(true);
+    } catch { /* 后端未启动等场景跳过，不阻塞页面 */ }
+    checkRunningBatch();
+    loadHistory();
+  })();
+</script>
+</body>
+</html>
