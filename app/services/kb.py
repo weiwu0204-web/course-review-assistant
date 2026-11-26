@@ -204,6 +204,15 @@ def build(paths: list[Path], course_name: str = "", use_cache: bool = True) -> K
         except Exception as exc:  # noqa: BLE001 单份失败不中断
             failures.append(f"{p.name}：{exc}")
 
+    kb = from_extracted(kb_id, course_name, results, failures)
+    _write_cache(kb)
+    return kb
+
+
+def from_extracted(
+    kb_id: str, course_name: str, results: list[ExtractionResult], failures: list[str],
+) -> KnowledgeBase:
+    """Construct the searchable document without choosing where to persist it."""
     chunks = build_chunks(results)
     if not chunks:
         detail = ("；".join(failures[:3])) if failures else "所有课件都没有可提取的文字"
@@ -217,7 +226,7 @@ def build(paths: list[Path], course_name: str = "", use_cache: bool = True) -> K
     union = set().union(*terms.values()) if terms else set()
     index = BM25Index(chunks, extra_terms=union)
 
-    kb = KnowledgeBase(
+    return KnowledgeBase(
         kb_id=kb_id,
         files=[r.filename for r in results],
         chunks=chunks,
@@ -229,8 +238,6 @@ def build(paths: list[Path], course_name: str = "", use_cache: bool = True) -> K
         course_name=course_name,
         failures=failures,
     )
-    _write_cache(kb)
-    return kb
 
 
 def _write_cache(kb: KnowledgeBase) -> None:

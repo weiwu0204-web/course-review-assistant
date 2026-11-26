@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from app.infrastructure.database import Database, password_hash, verify_password
 from app.infrastructure.object_store import Objects, ObjectStoreError
 from migrations.v0001 import batches, courses, jobs, materials, revisions, sessions, users
+from migrations.v0002 import generation_details
 
 logger = logging.getLogger(__name__)
 
@@ -102,15 +103,23 @@ class ReviewService:
         return select(
             materials.c.id, materials.c.kind, materials.c.revision,
             revisions.c.id.label("revision_id"), revisions.c.name,
+            revisions.c.object_key, revisions.c.bytes,
         ).join(revisions, and_(revisions.c.material_id == materials.c.id,
                               revisions.c.number == materials.c.revision)).where(materials.c.course_id == course)
 
     def list_materials(self, owner: str, course: str) -> list[dict]:
         with self.db.engine.connect() as conn:
             self._course(conn, owner, course)
-            return [dict(row) for row in conn.execute(
+            return [{k: row[k] for k in ("id", "kind", "revision", "revision_id", "name")} for row in conn.execute(
                 self._current_revisions(course).order_by(revisions.c.name, materials.c.id)
             ).mappings()]
+
+    def list_batches(self, owner: str, limit: int) -> list[dict]:
+        with self.db.engine.connect() as conn:
+            rows = conn.execute(select(batches.c.id, batches.c.course_title, batches.c.course_id,
+                                       batches.c.created_at).where(batches.c.owner_id == owner)
+                                .order_by(batches.c.created_at.desc(), batches.c.id.desc()).limit(limit))
+            return [dict(row) for row in rows.mappings()]
 
     def publish(self, owner: str, course: str, *, material: str | None, kind: str | None,
                 base: int, filename: str, source: BinaryIO, size: int) -> dict:
@@ -191,6 +200,9 @@ class ReviewService:
     def submit(self, owner: str, course: str, key: str, material_ids: list[str],
                exam_id: str | None, options: dict) -> dict:
         key = digest(key)
+        if options.get("enable_repair") is False:
+            # Default behavior has the same request identity as preview 001.
+            options = {k: v for k, v in options.items() if k != "enable_repair"}
         fingerprint = digest(json.dumps([course, material_ids, exam_id, options], sort_keys=True))
         batch_id = uuid4().hex
         try:
@@ -235,7 +247,10 @@ class ReviewService:
             rows = conn.execute(select(
                 jobs.c.id, jobs.c.position, jobs.c.status, jobs.c.attempts, jobs.c.error, jobs.c.result_key,
                 jobs.c.pages, jobs.c.truncated, revisions.c.number.label("revision"), revisions.c.name,
-            ).join(revisions, jobs.c.revision_id == revisions.c.id).where(
+                generation_details.c.detail.label("diagnostics"),
+            ).join(revisions, jobs.c.revision_id == revisions.c.id).outerjoin(
+                generation_details, generation_details.c.job_id == jobs.c.id,
+            ).where(
                 jobs.c.batch_id == batch_id,
             ).order_by(jobs.c.position)).mappings().all()
         return item, rows
@@ -255,7 +270,8 @@ class ReviewService:
             state = "failed"
         return {
             "id": item["id"], "course_id": item["course_id"], "status": state,
-            "jobs": [{key: row[key] for key in ("id", "position", "status", "attempts", "error", "revision", "name")}
+            "jobs": [{key: row[key] for key in ("id", "position", "status", "attempts", "error",
+                                                "revision", "name", "diagnostics")}
                      for row in rows],
         }
 

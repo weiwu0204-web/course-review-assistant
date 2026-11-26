@@ -20,6 +20,8 @@ class Generated:
     markdown: str
     pages: int
     truncated: bool = False
+    coverage: dict | None = None
+    repair: dict | None = None
 
 
 Generate = Callable[[Path, Path | None, dict, Path], Generated]
@@ -81,7 +83,9 @@ class Worker:
             logger.info("Job %s abandoned after lease loss", claim.id)
             return True
         # If commit outcome is unknown, retain the object.
-        if not self.queue.finish(claim, result_key=result_key, pages=out.pages, truncated=out.truncated):
+        diagnostics = {"coverage": out.coverage, "repair": out.repair} if out.coverage or out.repair else None
+        if not self.queue.finish(claim, result_key=result_key, pages=out.pages, truncated=out.truncated,
+                                 diagnostics=diagnostics):
             try:
                 self.objects.remove(result_key)
             except ObjectStoreError:

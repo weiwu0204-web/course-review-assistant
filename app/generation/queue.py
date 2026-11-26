@@ -3,10 +3,11 @@
 from dataclasses import dataclass
 from uuid import uuid4
 
-from sqlalchemy import and_, exists, or_, select, update
+from sqlalchemy import and_, exists, insert, or_, select, update
 
 from app.infrastructure.database import Database
 from migrations.v0001 import batches, jobs, revisions
+from migrations.v0002 import generation_details
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,14 +84,19 @@ class JobQueue:
             ))
             return result.rowcount == 1
 
-    def finish(self, claim: Claim, *, result_key: str, pages: int, truncated: bool) -> bool:
+    def finish(self, claim: Claim, *, result_key: str, pages: int, truncated: bool,
+               diagnostics: dict | None = None) -> bool:
         with self.db.engine.begin() as conn:
             now = self.db.clock()
             result = conn.execute(update(jobs).where(self._active(claim, now)).values(
                 status="done", result_key=result_key, pages=pages, truncated=int(truncated),
                 lease_token=None, lease_until=None, error=None,
             ))
-            return result.rowcount == 1
+            if result.rowcount != 1:
+                return False
+            if diagnostics is not None:
+                conn.execute(insert(generation_details).values(job_id=claim.id, detail=diagnostics))
+            return True
 
     def fail(self, claim: Claim, error: str) -> None:
         with self.db.engine.begin() as conn:

@@ -351,6 +351,7 @@ def run_single(
     repair_workdir: Path | None = None,
     *,
     settings_override: Settings | None = None,
+    pricing_override: dict | None = None,
 ) -> GenerateOutcome:
     """调用大模型生成单份课件的复习文档（map 阶段的原子单元）。
 
@@ -429,11 +430,12 @@ def run_single(
     repair_rec: RepairRecord | None = None
     if request.enable_repair and needs_repair(coverage):
         workdir = repair_workdir or (OUTPUT_ROOT / "_repair" / uuid4().hex[:8])
-        prov = current_provider() or {}
+        prov = (current_provider() or {}) if settings_override is None else (pricing_override or {})
         print(
             f"[repair] 覆盖率 {coverage.percent}% 低于阈值，开始自动补漏"
             f"（工作目录 {workdir}）"
         )
+        repair_options = {} if settings_override is None else {"settings_override": settings_override}
         fixed, repair_rec = repair_document(
             result,
             markdown,
@@ -441,6 +443,7 @@ def run_single(
             workdir=workdir,
             base_cost_yuan=_generation_cost(usage, prov, bool(image_paths)),
             provider=prov,
+            **repair_options,
         )
         if not repair_rec.rolled_back and repair_rec.final_percent > coverage.percent:
             markdown = fixed

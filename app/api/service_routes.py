@@ -2,21 +2,27 @@
 
 from contextlib import asynccontextmanager
 import logging
+from pathlib import Path
 from typing import Annotated, Literal
 
 from botocore.exceptions import BotoCoreError
-from fastapi import APIRouter, Depends, FastAPI, File, Form, Header, UploadFile
-from fastapi.responses import JSONResponse, Response
+from fastapi import APIRouter, Depends, FastAPI, File, Form, Header, Query, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, Field, StringConstraints, field_validator
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.api import study_routes
+from app.api.study_routes import MaterialsInput
+from app.api.types import Id
 from app.courses.service import ReviewService, ServiceError
 from app.infrastructure.object_store import ObjectStoreError
+from app.study.service import StudyService
 
 logger = logging.getLogger(__name__)
-Id = Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{32}$")]
 Nonnegative = Annotated[int, Field(ge=0, lt=2**31 - 1)]
+SERVICE_STATIC = Path(__file__).resolve().parents[1] / "static" / "service"
 
 
 class Login(BaseModel):
@@ -28,23 +34,17 @@ class CourseInput(BaseModel):
     title: Annotated[str, Field(min_length=1, max_length=200)]
 
 
-class BatchInput(BaseModel):
-    materials: Annotated[list[Id], Field(min_length=1, max_length=20)]
+class BatchInput(MaterialsInput):
     exam: Id | None = None
     exam_mode: Literal["direct", "predict"] = "direct"
     template: Literal["复习指南", "重点总结", "习题生成"] = "复习指南"
     style: Literal["精简", "详细", "表格化"] = "详细"
     use_vision: bool = False
-
-    @field_validator("materials")
-    @classmethod
-    def unique_materials(cls, value):
-        if len(value) != len(set(value)):
-            raise ValueError("同一课件不可重复提交")
-        return value
+    enable_repair: bool = False
 
 
-def create_service_app(service: ReviewService, *, dispose_on_shutdown: bool = False) -> FastAPI:
+def create_service_app(service: ReviewService, *, study: StudyService | None = None,
+                       dispose_on_shutdown: bool = False, repair_allowed: bool = True) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_):
         try:
@@ -58,16 +58,20 @@ def create_service_app(service: ReviewService, *, dispose_on_shutdown: bool = Fa
     bearer = HTTPBearer(auto_error=False)
 
     @app.middleware("http")
-    async def reject_large_requests(request, call_next):
+    async def request_rules(request, call_next):
         # Uvicorn is also used directly during preview. A reverse proxy should enforce
         # its own request-size and transfer-time limits before a public rollout.
         length = request.headers.get("content-length")
-        if request.method == "POST" and request.headers.get("content-type", "").startswith("multipart/form-data"):
+        content_type = request.headers.get("content-type", "").lower()
+        if request.method == "POST" and content_type.startswith("multipart/form-data"):
             if length is None:
                 return JSONResponse({"detail": "上传需要 Content-Length"}, status_code=411)
             if not length.isdecimal() or int(length) > service.upload_limit + 64 * 1024:
                 return JSONResponse({"detail": "上传大小超限"}, status_code=413)
-        return await call_next(request)
+        response = await call_next(request)
+        if request.url.path.startswith("/api/v1/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.exception_handler(ServiceError)
     def service_error(_, exc: ServiceError):
@@ -95,6 +99,17 @@ def create_service_app(service: ReviewService, *, dispose_on_shutdown: bool = Fa
             raise ServiceError(503, "服务存储尚未就绪")
         return {"status": "ready"}
 
+    @app.get("/", include_in_schema=False)
+    def workspace():
+        return FileResponse(SERVICE_STATIC / "index.html", headers={
+            "Cache-Control": "no-store",
+            "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; "
+                                       "connect-src 'self'; img-src 'self'; form-action 'self'; "
+                                       "base-uri 'none'; frame-ancestors 'none'",
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "no-referrer",
+        })
+
     @api.post("/sessions", status_code=201)
     def login(body: Login, response: Response):
         response.headers["Cache-Control"] = "no-store"
@@ -106,6 +121,10 @@ def create_service_app(service: ReviewService, *, dispose_on_shutdown: bool = Fa
                _owner: str = Depends(current_owner)):
         service.logout(creds.credentials)
         return Response(status_code=204)
+
+    @api.get("/capabilities")
+    def capabilities(_owner: str = Depends(current_owner)):
+        return {"auto_repair": repair_allowed}
 
     @api.post("/courses", status_code=201)
     def create_course(body: CourseInput, owner: str = Depends(current_owner)):
@@ -149,9 +168,15 @@ def create_service_app(service: ReviewService, *, dispose_on_shutdown: bool = Fa
         key: Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=128)],
         owner: str = Depends(current_owner),
     ):
+        if body.enable_repair and not repair_allowed:
+            raise ServiceError(422, "当前服务未启用自动补漏")
         return service.submit(
             owner, course, key, body.materials, body.exam, body.model_dump(exclude={"materials", "exam"}),
         )
+
+    @api.get("/batches")
+    def list_batches(limit: Annotated[int, Query(ge=1, le=100)] = 20, owner: str = Depends(current_owner)):
+        return service.list_batches(owner, limit)
 
     @api.get("/batches/{batch_id}")
     def get_batch(batch_id: Id, owner: str = Depends(current_owner)):
@@ -171,5 +196,7 @@ def create_service_app(service: ReviewService, *, dispose_on_shutdown: bool = Fa
                         headers={"Content-Disposition": 'attachment; filename="review.md"',
                                  "Cache-Control": "private, no-store"})
 
+    study_routes.register(api, study or StudyService(service), current_owner)
     app.include_router(api)
+    app.mount("/assets", StaticFiles(directory=SERVICE_STATIC), name="service-assets")
     return app

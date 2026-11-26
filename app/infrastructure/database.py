@@ -8,6 +8,7 @@ from sqlalchemy import BigInteger, cast, create_engine, event, func, insert, sel
 from sqlalchemy.engine import Connection, make_url
 
 from migrations.v0001 import metadata, schema_revisions, users
+from migrations.v0002 import applied, metadata as study_metadata
 
 SCHEMA_VERSION = 1
 
@@ -54,9 +55,16 @@ class Database:
             elif versions != [SCHEMA_VERSION]:
                 raise RuntimeError("Unsupported service schema version")
 
+            study_metadata.create_all(conn)
+            if conn.scalar(select(applied.c.version).where(applied.c.version == 2)) is None:
+                conn.execute(insert(applied).values(version=2))
+
     def ready(self) -> bool:
         with self.engine.connect() as conn:
-            return conn.scalars(select(schema_revisions.c.version)).all() == [SCHEMA_VERSION]
+            return (
+                conn.scalars(select(schema_revisions.c.version)).all() == [SCHEMA_VERSION]
+                and conn.scalar(select(applied.c.version).where(applied.c.version == 2)) == 2
+            )
 
     def clock(self):
         return cast(func.strftime("%s", "now"), BigInteger) if self.sqlite else func.unix_timestamp()

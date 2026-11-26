@@ -1,6 +1,6 @@
 # PPT 复习助手开发约定
 
-先读 [docs/README.md](docs/README.md)；改服务行为时读 [首个服务规格](docs/specs/001-courseware-revision/spec.md) 和对应设计。现有桌面入口是 app.main:app，服务版用独立入口。保持桌面 API、配置和运行数据兼容。
+先读 [文档索引](docs/README.md)。修改登录、课件版本或任务执行前读 [001 服务基础规格](docs/specs/001-courseware-revision/spec.md) 及对应设计。修改浏览器工作台、知识库问答或生成诊断前读 [002 学习工作台规格](docs/specs/002-service-study/spec.md) 及对应设计。桌面入口为 `app.main:app`，服务版使用独立入口。保持桌面 API、配置和运行数据兼容。
 
 - API 从认证身份派生 owner。课程、版本、任务、下载和重试都在可信存储里校验归属；对象键和 ID 只定位数据。服务入口只注册服务版路由。
 - 输入版本在提交时固定。发布新版本前保存完整对象；数据库事务只做元数据更新。worker 在短事务领取任务，事务外解析、生成和上传，带本次领取标记提交结果。
