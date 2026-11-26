@@ -1,5 +1,8 @@
 # 文档索引
 
+- [产品范围](product.md) · [服务版架构](service-architecture.md) · [001 服务基础规格](specs/001-courseware-revision/spec.md) · [实施任务](specs/001-courseware-revision/tasks.md)
+- 桌面版保全点：`baseline/desktop-0.11.0`（`7ee595b`）。下面保留现有桌面说明、实验和历史决策。
+
 | 文档 | 内容 |
 |------|------|
 | [PROJECT.md](./PROJECT.md) | 项目是什么、解决谁的什么问题、当前能力边界 |
