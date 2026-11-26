@@ -14,7 +14,7 @@ from pathlib import Path
 
 from openai import OpenAI
 
-from app.config import OUTPUT_ROOT, current_provider, get_settings
+from app.config import OUTPUT_ROOT, Settings, current_provider, get_settings
 from app.models import ExtractionResult, GenerateRequest
 from app.services.agent_repair import (
     RepairRecord,
@@ -349,6 +349,8 @@ def run_single(
     request: GenerateRequest,
     exam_text: str = "",
     repair_workdir: Path | None = None,
+    *,
+    settings_override: Settings | None = None,
 ) -> GenerateOutcome:
     """调用大模型生成单份课件的复习文档（map 阶段的原子单元）。
 
@@ -358,7 +360,7 @@ def run_single(
     ``repair_workdir``：P2 补漏的过程目录（会话上下文、原文备份、补后文档）；
     批任务传该 job 自己的目录，单份不传则落在 ``output/_repair/<随机名>``。
     """
-    settings = get_settings()
+    settings = settings_override if settings_override is not None else get_settings()
     if not settings.ai_api_key:
         raise RuntimeError(
             "尚未配置 AI API Key：请点击右上角「设置」选择服务商并粘贴你的 Key。"

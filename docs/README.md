@@ -1,6 +1,8 @@
 # 文档索引
 
 - [产品范围](product.md) · [服务版架构](service-architecture.md) · [001 服务基础规格](specs/001-courseware-revision/spec.md) · [实施任务](specs/001-courseware-revision/tasks.md)
+- [服务版启动与回滚](runbooks/service-preview.md)
+- [第一轮验证证据](runbooks/service-verification.md) · [ADR 0001：桌面与服务版分开运行](decisions/0001-service-preview.md)
 - 桌面版保全点：`baseline/desktop-0.11.0`（`7ee595b`）。下面保留现有桌面说明、实验和历史决策。
 
 | 文档 | 内容 |

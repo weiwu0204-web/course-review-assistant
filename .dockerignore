@@ -1,0 +1,17 @@
+.git
+.venv
+.env
+.service.env
+.service-data
+Ceph期末复习文档.md
+**/__pycache__
+.pytest*
+.workbuddy
+.idea
+output
+uploads
+课件
+计算机组成原理
+eval
+tests
+docs
