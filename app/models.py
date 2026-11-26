@@ -137,3 +137,31 @@ class RepairRecord(BaseModel):
     document: str = Field(
         default="", exclude=True, description="修好的文档正文，只回传调用方，不写进 meta.json"
     )
+
+
+class KbBuildResponse(BaseModel):
+    """建库结果。**统计信息必须回给前端**——用户要能确认这次覆盖了什么。"""
+
+    kb_id: str
+    course_name: str = Field(default="", description="建库时填的课程名，用于历史记录归组")
+    n_files: int = Field(description="成功提取的课件数")
+    n_pages: int = Field(description="页数 = chunk 数（一页一块）")
+    n_chars: int = 0
+    n_chunks: int = 0
+    n_terms: int = Field(default=0, description="挖出的课程术语数（检索第 4 层的词表规模）")
+    failures: list[str] = Field(
+        default_factory=list, description="提取失败的课件；单份失败不中断整批，但要如实告知"
+    )
+
+
+class AskRequest(BaseModel):
+    """课程知识库问答请求（P3）。"""
+
+    kb_id: str
+    question: str
+    topk: int = Field(default=5, description="送进生成上下文的原文片段数")
+    scope: str = Field(default="", description="只在这一份课件里找；空 = 整门课")
+    use_rewrite: bool = Field(
+        default=True,
+        description="查询改写：口语提问先改写成术语式检索式（多一次 LLM 调用，约 ¥0.005）",
+    )

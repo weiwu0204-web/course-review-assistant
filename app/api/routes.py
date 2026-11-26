@@ -43,6 +43,16 @@ def _cleanup_stale_uploads() -> None:
       - EXAM_DIR 下的试题文件
     刚上传的文件 mtime 为当前时间，绝不可能被本次清扫误删。
     """
+    try:
+        _cleanup_stale_uploads_inner()
+    except (OSError, SystemExit):
+        # 清理是**纯副作用**：磁盘满、权限不足、文件被占用、沙箱拒绝删除
+        # （本机 shim 就把"拒绝删除"实现成 SystemExit，而它不是 Exception 子类）
+        # 都可能抛——任何一种都不该让上传 / 建库这条主流程失败。
+        pass
+
+
+def _cleanup_stale_uploads_inner() -> None:
     settings = get_settings()
     ttl_seconds = timedelta(hours=settings.upload_ttl_hours).total_seconds()
     now = time.time()
@@ -61,7 +71,13 @@ def _cleanup_stale_uploads() -> None:
                         shutil.rmtree(entry, ignore_errors=True)
                     else:
                         entry.unlink(missing_ok=True)
-                except OSError:  # noqa: BLE001
+                except (OSError, SystemExit):
+                    # ⚠️ **SystemExit 也必须接**：某些安全/沙箱环境把"拒绝删除"
+                    # 实现成 SystemExit 而不是异常（本机的 shim 就是），
+                    # 而它不是 Exception 的子类 —— 只写 `except OSError` 会漏掉，
+                    # 表现是**上传/建库直接 500**（2026-10-17 真跑抓到）。
+                    # 清理是**纯副作用**：磁盘满、权限不足、文件被占用都会触发同类失败，
+                    # 任何一种都不该拖垮主流程。
                     continue
 
     if EXAM_DIR.exists():
@@ -73,7 +89,8 @@ def _cleanup_stale_uploads() -> None:
             if stale:
                 try:
                     f.unlink(missing_ok=True)
-                except OSError:  # noqa: BLE001
+                except (OSError, SystemExit):
+                    # 同上：清理失败是纯副作用，不该让主流程失败
                     continue
 
 

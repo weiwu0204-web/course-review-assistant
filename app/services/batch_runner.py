@@ -29,6 +29,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from app.config import OUTPUT_ROOT as CONFIG_OUTPUT_ROOT
+from app.config import get_settings
 from app.models import ExtractionResult, GenerateRequest
 from app.services.ai_generator import GenerateOutcome, run_single
 from app.services.cost_estimate import estimate_generation_cost
@@ -83,6 +84,14 @@ def job_dir(output_root: str | Path, batch_id: str, idx: int, slug: str) -> Path
     return Path(output_root) / batch_id / f"{idx:02d}_{slug}"
 
 
+def _settings_model() -> str:
+    """当前生效的模型名。读配置失败就返回空串——埋点不该让作业跑不起来。"""
+    try:
+        return str(get_settings().ai_model or "")
+    except Exception:  # noqa: BLE001 纯副作用，失败不影响主流程
+        return ""
+
+
 # ---------------------------------------------------------------- 状态对象
 
 @dataclass
@@ -112,6 +121,13 @@ class JobRecord:
     coverage_total: int = 0
     # 补漏摘要（空 = 没触发）。给前端一行话："已自动补漏 2 轮：22% → 96%，¥0.011"
     repair_summary: str = ""
+    # 埋点（P4 可观测）：token 与耗时。
+    # 旧 batch.json 没有这几个字段 → 加载后是默认值 0；统计时 0 表示"未记录"，
+    # **不能当成"花了 0 token"**参与均值（见 services/stats.py）。
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    duration_s: float = 0.0
+    model: str = ""  # 实际出稿的模型（同一门课换模型时才能区分）
     started_at: str = ""
     finished_at: str = ""
 
@@ -286,6 +302,10 @@ def save_job_artifacts(batch: Batch, job: JobRecord, outcome: GenerateOutcome) -
         "usage": outcome.usage,
         "cost_yuan": job.cost_yuan,
         "cost_is_estimate": job.cost_is_estimate,
+        "prompt_tokens": job.prompt_tokens,
+        "completion_tokens": job.completion_tokens,
+        "duration_s": job.duration_s,
+        "model": job.model,
         "error": job.error,
         "warning": job.warning,
         "coverage_percent": job.coverage_percent,
@@ -418,6 +438,10 @@ def _account_cost(
             4,
         )
         job.cost_is_estimate = False
+        # 埋点：token 明细落进 job。只有成本没有 token，事后算不出"哪个环节贵"
+        # （输入短输出长 vs 输入长输出短），也做不了跨模型同口径对比。
+        job.prompt_tokens = int(usage.get("prompt_tokens", 0) or 0)
+        job.completion_tokens = int(usage.get("completion_tokens", 0) or 0)
     else:
         job.cost_yuan = round(job.est_cost, 4)
         job.cost_is_estimate = True
@@ -502,6 +526,12 @@ class BatchRunner:
             job.started_at = _now()
             job.error = ""
             job.warning = ""
+            # 埋点：耗时用 perf_counter 而不是 started_at/finished_at 相减——
+            # 后者是墙钟字符串，系统时间跳变（校时/NTP）会算出负数或巨大值。
+            t_job = time.perf_counter()
+            # 模型名：优先用批次里的 provider 快照；老批次可能没存 model，
+            # 那就退到当前设置——写入时刻的当前设置就是这次实际用的模型。
+            job.model = str((batch.provider or {}).get("model") or "") or _settings_model()
             persist_batch(batch)
 
             try:
@@ -533,6 +563,7 @@ class BatchRunner:
                     job.error = friendly_ai_error(exc)
                 job.status = STATUS_ERROR
                 job.finished_at = _now()
+                job.duration_s = round(time.perf_counter() - t_job, 1)
                 # 错误也要落盘 meta（error 字段），进程此刻挂了不丢现场
                 save_job_artifacts(batch, job, GenerateOutcome(markdown=""))
                 if kind == "balance":
@@ -565,6 +596,7 @@ class BatchRunner:
                 job.coverage_total = outcome.coverage.total_terms
             job.status = STATUS_DONE
             job.finished_at = _now()
+            job.duration_s = round(time.perf_counter() - t_job, 1)
             consecutive_network = 0
             save_job_artifacts(batch, job, outcome)
             persist_batch(batch)

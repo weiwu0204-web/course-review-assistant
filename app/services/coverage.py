@@ -49,11 +49,17 @@ _EN_TERM = re.compile(r"[A-Za-z][A-Za-z0-9_.\-]{1,}")
 # 数字 + 单位/阈值：考试最爱考、且几乎不会被改写。
 # 除「数字+单位」外，也收**孤立小数**（0.85 / 1.5 这类几乎都是参数或阈值）；
 # 但**不收孤立整数**——那会把页码、序号也当成知识点。
-_NUM_UNIT = re.compile(
+#
+# 公开名（无下划线）：P3 的检索分词器要复用同一条正则。
+# 两处各写一份会**正则漂移**——改了一边忘了另一边，表现为"覆盖率算得对但检索查不到"，
+# 极难排查。所以只留一份定义，P3 那边 import 这里。
+NUM_UNIT = re.compile(
     r"\d+\.\d+"  # 孤立小数（参数/阈值）
     r"|\d+(?:\.\d+)?\s*(?:%|KB|MB|GB|TB|PB|ms|us|ns|GiB|MiB|TiB|"
     r"字节|副本|小时|分钟|秒|倍|个|块|页|节点|核|GB/s|MB/s)"
 )
+#: 兼容旧引用（本模块内部原用私有名）。
+_NUM_UNIT = NUM_UNIT
 # 纯中文片段（用于频次挖掘）
 _CJK_RUN = re.compile(r"[\u4e00-\u9fff]+")
 
@@ -109,7 +115,7 @@ def extract_en_terms(text: str) -> set[str]:
         for t in _EN_TERM.findall(text)
         if len(t.strip(".")) >= 2 and t.strip(".").lower() not in _EN_STOP
     }
-    terms |= {_WS.sub("", m).lower() for m in _NUM_UNIT.findall(text)}
+    terms |= {_WS.sub("", m).lower() for m in NUM_UNIT.findall(text)}
     return terms
 
 

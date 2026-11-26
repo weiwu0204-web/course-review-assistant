@@ -320,8 +320,20 @@
   .progress { height: 8px; background: #eef0f1; border-radius: 4px; overflow: hidden; margin-top: 12px; }
   #batchProgressBar { height: 100%; width: 0; background: #2da44e; transition: width 0.4s; }
 
-  /* 总册/各节切换 tab（结果卡片内） */
-  .sec-tab {
+  /* ---- 统计页（P4 可观测） ---- */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 12px 0 4px; }
+  .kpi { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; background: #fbfbfb; }
+  .kpi .k { font-size: 12px; color: var(--muted); }
+  .kpi .v { font-size: 19px; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .kpi .u { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 2px; }
+  .stat-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  .stat-table th, .stat-table td { border-bottom: 1px solid var(--border); padding: 7px 6px; text-align: right; }
+  .stat-table th:first-child, .stat-table td:first-child { text-align: left; }
+  .stat-table th { color: var(--muted); font-weight: 500; }
+  .stat-note { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  h4.stat-h { font-size: 13px; font-weight: 600; margin: 16px 0 2px; }
+
+  /* 总册/各节切换 tab（结果卡片内） */  .sec-tab {
     border: 1px solid var(--border); background: #fff; color: var(--text);
     border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer;
     max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -343,6 +355,8 @@
   <div class="tabs" data-page-node-id="7vMrTMoB64y3HAGniJn8zv">
     <button type="button" class="tab active" id="tabSingle" data-page-node-id="W3ZzFmZd5AyWZIVqImAFAF">单份生成</button>
     <button type="button" class="tab" id="tabBatch" data-page-node-id="lHBS8GNqcEPd2zM4wTcJ9p">整课批量</button>
+    <button type="button" class="tab" id="tabHistory" data-page-node-id="h1ZQm3tVb8yKcRwPe5nAs">历史记录</button>
+    <button type="button" class="tab" id="tabStats" data-page-node-id="st4TsV1ew2QpLm8xNb7Rc">统计</button>
   </div>
 
   <div id="singleView" data-page-node-id="BKwWeSKw97uj2IdbHUWYys">
@@ -498,10 +512,35 @@
       </div>
       <div id="batchStatus" style="font-size:13px; color:var(--muted); margin-top:10px" data-page-node-id="xPArLfMD1L3BG3ue7vx6I4"></div>
 
-      <div id="batchHistory" class="hidden"
-           style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border)" data-page-node-id="nCHFtkt6KAVA9ZqnVftStW">
-        <div class="meta" style="margin-bottom:2px" data-page-node-id="2f1RdxmiCfqJ7il0QybWE9">历史记录（点一行即可查看已生成的复习内容）</div>
-        <div id="historyList" data-page-node-id="SmMZY2ozFzMSrrAER3HzuU"></div>
+      <!-- ===== 课程问答（P3 知识库）=====
+           刻意**常驻显示**、不去监听上面的文件选择变化：
+           区块一直在，用户点了才发现没选课件，比"按钮出现又消失"更可预期。
+           也刻意不依赖"先生成文档"——知识库建在课件原文上。 -->
+      <div id="qaCard" style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border)">
+        <h3>课程问答</h3>
+        <div class="meta" style="margin-top:4px">
+          基于上面选中课件的<strong>原文</strong>直接提问，不必先生成复习文档。
+          回答会标注来源页码，并自动核验每条引用是否真的出自那一页。
+        </div>
+        <div class="row" style="margin-top:12px; margin-bottom:0">
+          <div class="field" style="flex:3; min-width:220px">
+            <label>你的问题</label>
+            <input type="text" id="qaInput" placeholder="例：cache 是怎么工作的（先在楼上选课件）" />
+          </div>
+          <div class="field">
+            <label>检索范围</label>
+            <select id="qaScope"><option value="">整门课</option></select>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <button class="btn" id="qaAskBtn">提问</button>
+          <span class="meta" id="qaKbStatus" style="margin-left:12px"></span>
+        </div>
+        <div id="qaRewrite" class="meta" style="margin-top:10px"></div>
+        <div id="qaSources" style="margin-top:10px"></div>
+        <div id="qaAnswer" style="margin-top:12px"></div>
+        <div id="qaCitations" style="margin-top:12px"></div>
+        <div id="qaHistory" style="margin-top:18px; padding-top:14px; border-top:1px solid var(--border)"></div>
       </div>
     </div>
 
@@ -516,6 +555,35 @@
         <button class="btn secondary hidden" id="batchNewBtn" data-page-node-id="cPH3oP6GZDv1ZEKsLHq9gP">返回新建</button>
       </div>
       <div id="batchRunStatus" style="font-size:13px; color:var(--muted); margin-top:10px" data-page-node-id="06O1oIcnJUcNzxg1aKGl4J"></div>
+    </div>
+  </div>
+
+  <div id="historyView" class="hidden" data-page-node-id="wV7nQ2sLd8fJpXcYm4RtK">
+    <div class="card" data-page-node-id="qB9mZ4tRv2yWkHnEs6LdA">
+      <h3 data-page-node-id="gN3xP8cKv5jMqTbW7sYuF">历史记录</h3>
+      <div class="meta" style="margin-top:4px" data-page-node-id="aR6tY2wJq9pLdVhC4nZmX">
+        按课程归组：一门课一栏，里面有它生成过的复习文档和问过的全部问题。
+        归组依据是生成/建库时填的「课程名称」——改课程名不会重建知识库，只会重新归组。
+      </div>
+      <div id="historySummary" class="meta" style="margin-top:10px" data-page-node-id="kF5bH9nQx3vTpRwL8sJmA"></div>
+      <div id="historyList" style="margin-top:10px" data-page-node-id="SmMZY2ozFzMSrrAER3HzuU"></div>
+      <div id="historyEmpty" class="meta hidden" style="margin-top:12px" data-page-node-id="yT2cV7mKp4wZnRbX9sQdE">
+        还没有任何记录。去「整课批量」选一门课生成复习文档，或在下面直接向课件提问——两者都会出现在这里。
+      </div>
+    </div>
+  </div><!-- /historyView -->
+
+  <div id="statsView" class="hidden">
+    <div class="card">
+      <h3>统计</h3>
+      <div class="meta" style="margin-top:4px">
+        全部数字来自磁盘上的作业记录（<code>output/*/batch.json</code> 与 <code>output/qa/*.jsonl</code>），
+        只读汇总，不额外调模型、不额外花钱。
+      </div>
+      <div id="statsBody" style="margin-top:6px"></div>
+      <div id="statsEmpty" class="meta hidden" style="margin-top:12px">
+        还没有可统计的记录。生成过复习文档或问过问题之后再看这里。
+      </div>
     </div>
   </div>
 
@@ -1554,15 +1622,48 @@
   let batchMasterText = "";     // 总册原文缓存
   let maxBatchFiles = 20;       // 单批上限，以 /api/batches 的 max_files 为准（启动时拉取）
 
+  // 结果卡片（`#resultCard`）是「单份」和「批量」共用的一块，DOM 上位于三个视图之外。
+  // 切到历史 tab 时必须把它藏起来，否则历史页下方会冒出上一份复习文档——
+  // 那正是"点了文档再返回，下面的东西还在"这类困惑的来源。
+  // 用一个标记记住"是被切换隐藏的"，切回来才恢复，避免误把本该隐藏的状态掀开。
+  let resultCardHiddenByTab = false;
+
   function switchTab(tab) {
     const single = tab === "single";
+    const batch = tab === "batch";
+    const history = tab === "history";
+    const stats = tab === "stats";
     $("tabSingle").classList.toggle("active", single);
-    $("tabBatch").classList.toggle("active", !single);
+    $("tabBatch").classList.toggle("active", batch);
+    $("tabHistory").classList.toggle("active", history);
+    $("tabStats").classList.toggle("active", stats);
     $("singleView").classList.toggle("hidden", !single);
-    $("batchView").classList.toggle("hidden", single);
+    $("batchView").classList.toggle("hidden", !batch);
+    $("historyView").classList.toggle("hidden", !history);
+    $("statsView").classList.toggle("hidden", !stats);
+
+    const rc = $("resultCard");
+    // 统计页与历史页一样，不该在下面挂着上一份复习文档
+    if (history || stats) {
+      if (!rc.classList.contains("hidden")) {
+        rc.classList.add("hidden");
+        resultCardHiddenByTab = true;
+      }
+    } else if (resultCardHiddenByTab) {
+      rc.classList.remove("hidden");
+      resultCardHiddenByTab = false;
+    }
+
+    // 每次切到历史都刷新：在问答区问了新问题、或刚跑完一批，回来必须是最新的。
+    // 只在这一个入口拉取，不在别处零散调用——避免"三个地方各自决定何时刷新"。
+    if (history) loadHistory();
+    // 统计同理：这是唯一拉取入口
+    if (stats) loadStats();
   }
   $("tabSingle").addEventListener("click", () => switchTab("single"));
   $("tabBatch").addEventListener("click", () => switchTab("batch"));
+  $("tabHistory").addEventListener("click", () => switchTab("history"));
+  $("tabStats").addEventListener("click", () => switchTab("stats"));
 
   function bSetStatus(msg, type = "", html = false) {
     const el = $("batchStatus");
@@ -1674,6 +1775,251 @@
       () => doStartBatch(),
       () => {}
     );
+  });
+
+  // ==================== 课程问答（P3 知识库）====================
+  //
+  // 与「生成复习文档」完全独立的一条链路：上传课件 → 建库 → 提问 → 流式答案 + 引用核验。
+  // 知识库建在**课件原文**上，所以不依赖"生成过文档"。
+
+  let qaKbId = "";
+  let qaKbSig = "";   // 建库时的文件指纹，用来判断"选的文件换了没"
+  let qaBusy = false;
+
+  function qaStatus(html) { $("qaKbStatus").innerHTML = html || ""; }
+
+  // 文件指纹：名字 + 大小。**不去监听选择列表的增删**——那样要改三四处现有代码，
+  // 而且容易漏；改成每次提问前比一次指纹，换了文件就自动重建，逻辑集中在一处。
+  function qaSignature() {
+    return batchFiles.map((x) => `${x.file.name}:${x.file.size}`).join("|");
+  }
+
+  async function qaEnsureKb() {
+    const sig = qaSignature();
+    if (qaKbId && sig === qaKbSig) return true;
+    if (!batchFiles.length) {
+      qaStatus('<span style="color:var(--danger)">请先在上面选择这门课的课件</span>');
+      return false;
+    }
+    const n = batchFiles.length;
+    qaStatus(`正在建库（${n} 份课件，首次约需数秒）…`);
+    const form = new FormData();
+    batchFiles.forEach((x) => form.append("files", x.file));
+    // 课程名与「生成复习文档」共用同一个输入框：**归组只能靠它**。
+    // 课程名变了不重建索引（它只是标签），但会把历史记录归到新的课名下。
+    const courseEl = $("batchCourseName");
+    form.append("course_name", courseEl ? courseEl.value.trim() : "");
+    try {
+      const res = await fetch("/api/kb", { method: "POST", body: form });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        qaStatus(`<span style="color:var(--danger)">建库失败：${linkifyHtml(d.detail || res.status)}</span>`);
+        return false;
+      }
+      qaKbId = d.kb_id;
+      qaKbSig = sig;
+      let msg = `已建库：<strong>${d.n_files}</strong> 份 / <strong>${d.n_pages}</strong> 页 / `
+              + `${Number(d.n_chars).toLocaleString()} 字符`;
+      if (d.failures && d.failures.length) {
+        msg += `<br><span style="color:var(--danger)">⚠️ ${d.failures.length} 份未能提取：`
+             + `${linkifyHtml(d.failures.slice(0, 3).join("；"))}</span>`;
+      }
+      qaStatus(msg);
+      const sel = $("qaScope");
+      sel.innerHTML = '<option value="">整门课</option>';
+      batchFiles.forEach((x) => {
+        const o = document.createElement("option");
+        o.value = x.file.name;
+        o.textContent = x.file.name;
+        sel.appendChild(o);
+      });
+      qaLoadHistory();   // 建库成功即回显"这门课之前问过什么"
+      return true;
+    } catch (e) {
+      qaStatus(`<span style="color:var(--danger)">建库失败：${linkifyHtml(String(e))}</span>`);
+      return false;
+    }
+  }
+
+  function qaRenderSources(ev) {
+    const el = $("qaSources");
+    if (!ev.hits || !ev.hits.length) {
+      el.innerHTML = `<div class="meta">${linkifyHtml(ev.note || "没有检索到相关内容")}</div>`;
+      return;
+    }
+    const rows = ev.hits.map((h) =>
+      `<li><code>${linkifyHtml(h.file)}</code> 第 ${h.page} 页`
+      + (h.title ? `：${linkifyHtml(h.title)}` : "") + "</li>"
+    ).join("");
+    el.innerHTML = `<div class="meta">找到了 ${ev.hits.length} 处相关原文：</div>`
+      + `<ul style="padding-left:18px; margin:6px 0 0">${rows}</ul>`;
+  }
+
+  function qaRenderCitations(ev) {
+    const el = $("qaCitations");
+    const note = (ev.summary && ev.summary.note) || "";
+    if (!ev.checks || !ev.checks.length) {
+      el.innerHTML = note ? `<div class="meta">${linkifyHtml(note)}</div>` : "";
+      return;
+    }
+    const items = ev.checks.map((c) => {
+      const ok = c.verdict === "supported";
+      const gone = c.verdict === "not_found";
+      const color = ok ? "var(--ok, #2e7d32)" : (gone ? "var(--danger)" : "#b26a00");
+      const mark = ok ? "✓" : (gone ? "✗" : "?");
+      const claim = (c.claim || "").replace(/\s+/g, " ").slice(0, 90);
+      // 附源页原文：核验结论一律是「待核」而非「错误」，最终判断权交回用户，
+      // 所以必须把证据一并给出，否则用户无从核对。
+      const detail = c.excerpt
+        ? '<details style="margin-top:4px"><summary style="cursor:pointer">查看源页原文</summary>'
+          + `<pre style="white-space:pre-wrap; font-size:12px; margin:6px 0 0">${linkifyHtml(c.excerpt)}</pre></details>`
+        : "";
+      return "<li style=\"margin-bottom:10px\">"
+        + `<span style="color:${color}">${mark} ${linkifyHtml(c.verdict_label)}</span>`
+        + ` — <code>${linkifyHtml(c.file)}</code> 第 ${c.page} 页`
+        + `<div class="meta" style="margin-top:2px">论断：${linkifyHtml(claim)}</div>${detail}</li>`;
+    }).join("");
+    el.innerHTML = `<div class="meta">引用核验：${linkifyHtml(note)}</div>`
+      + `<ul style="padding-left:18px; margin:6px 0 0">${items}</ul>`;
+  }
+
+  // ---- 问过的问题（读 output/qa/<kb_id>.jsonl）----
+  //
+  // 历史落在服务端的独立目录里，与知识库缓存的 TTL 无关——
+  // 用户可能过了一周才回来翻"上次问了什么"，那时缓存早过期了，历史必须还在。
+  // 所以这里**不做"知识库过期就不显示历史"的判断**。
+
+  async function qaLoadHistory() {
+    const el = $("qaHistory");
+    if (!qaKbId) { el.innerHTML = ""; return; }
+    try {
+      const res = await fetch(`/api/kb/${encodeURIComponent(qaKbId)}/qa?limit=30`);
+      if (!res.ok) { el.innerHTML = ""; return; }
+      const d = await res.json();
+      qaRenderHistory(d.records || []);
+    } catch { el.innerHTML = ""; }   // 历史读不到不影响问答本身
+  }
+
+  function qaRenderHistory(records) {
+    const el = $("qaHistory");
+    if (!records.length) {
+      el.innerHTML = '<div class="meta">这门课还没有提问记录</div>';
+      return;
+    }
+    const rows = records.map((r) => {
+      const when = String(r.ts || "").replace("T", " ").slice(5, 16);
+      const nHit = (r.hits || []).length;
+      const found = r.no_hit
+        ? '<span style="color:#b26a00">未检索到内容</span>'
+        : `${nHit} 处原文`;
+      const cites = r.citations && r.citations.total
+        ? ` · 引用 ${r.citations.total} 条` : "";
+      // data-q 存原问题：点一条就能重问（重问会走完整链路，包括重建库）
+      return '<li style="margin-bottom:7px">'
+        + `<a href="#" class="qa-replay" data-q="${linkifyHtml(r.question)}" `
+        + `style="color:inherit">${linkifyHtml(r.question)}</a>`
+        + `<span class="meta"> — ${linkifyHtml(when)} · ${found}${cites}</span></li>`;
+    }).join("");
+    el.innerHTML = `<div class="meta">这门课问过的问题（点一条可重问）：</div>`
+      + `<ul style="padding-left:18px; margin:6px 0 0">${rows}</ul>`;
+    el.querySelectorAll(".qa-replay").forEach((a) => {
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        $("qaInput").value = a.dataset.q || "";
+        qaAsk();
+      });
+    });
+  }
+
+  async function qaAsk() {
+    if (qaBusy) return;
+    const q = $("qaInput").value.trim();
+    if (!q) { $("qaInput").focus(); qaStatus("请先输入问题"); return; }
+    if (!(await qaEnsureKb())) return;
+
+    qaBusy = true;
+    $("qaAskBtn").disabled = true;
+    const ansEl = $("qaAnswer");
+    $("qaRewrite").textContent = "";
+    $("qaSources").innerHTML = "";
+    $("qaCitations").innerHTML = "";
+    ansEl.innerHTML = '<div class="meta">正在检索…</div>';
+
+    const st = { text: "", lastRender: 0 };
+    try {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kb_id: qaKbId,
+          question: q,
+          scope: $("qaScope").value,
+          use_rewrite: true,
+        }),
+      });
+      if (!res.ok || !res.body) {
+        const d = await res.json().catch(() => ({}));
+        ansEl.innerHTML = `<div class="meta" style="color:var(--danger)">`
+          + `${linkifyHtml(d.detail || "请求失败")}</div>`;
+        return;
+      }
+
+      // POST + ReadableStream 手工解析 SSE：浏览器的 EventSource 只支持 GET，
+      // 而问答参数（kb_id / question / scope）塞进 query string 既难看又有长度限制。
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        // stream:true 必须有——中文是多字节，可能正好被切在 chunk 边界上
+        buf += decoder.decode(value, { stream: true });
+        const frames = buf.split("\n\n");
+        buf = frames.pop() || "";
+        for (const frame of frames) {
+          if (!frame.startsWith("data: ")) continue;
+          let ev;
+          try { ev = JSON.parse(frame.slice(6)); } catch { continue; }
+
+          if (ev.type === "rewrite") {
+            if (ev.applied) {
+              $("qaRewrite").innerHTML =
+                `已改写为检索式：<strong>${linkifyHtml(ev.rewritten)}</strong>`;
+            } else if (ev.note) {
+              $("qaRewrite").textContent = `未改写：${ev.note}`;
+            }
+          } else if (ev.type === "sources") {
+            qaRenderSources(ev);
+          } else if (ev.type === "delta") {
+            st.text += ev.text;
+            // 节流渲染：每个 token 都 marked.parse 一次会卡住长回答
+            const now = performance.now();
+            if (now - st.lastRender > 80) {
+              st.lastRender = now;
+              ansEl.innerHTML = DOMPurify.sanitize(marked.parse(st.text));
+            }
+          } else if (ev.type === "citations") {
+            if (st.text) ansEl.innerHTML = DOMPurify.sanitize(marked.parse(st.text));
+            qaRenderCitations(ev);
+          } else if (ev.type === "error") {
+            ansEl.innerHTML = `<div class="meta" style="color:var(--danger)">`
+              + `${linkifyHtml(ev.message)}</div>`;
+          }
+        }
+      }
+      if (st.text) ansEl.innerHTML = DOMPurify.sanitize(marked.parse(st.text));
+    } catch (e) {
+      ansEl.innerHTML = `<div class="meta" style="color:var(--danger)">${linkifyHtml(String(e))}</div>`;
+    } finally {
+      qaBusy = false;
+      $("qaAskBtn").disabled = false;
+      qaLoadHistory();   // 这次问答已落盘，刷新列表让用户看到它进去了
+    }
+  }
+
+  $("qaAskBtn").addEventListener("click", qaAsk);
+  $("qaInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); qaAsk(); }
   });
 
   async function doStartBatch() {
@@ -1886,11 +2232,16 @@
     batchId = null;
     batchMasterText = "";
     $("batchRunCard").classList.add("hidden");
+    // ★ 必须一并隐藏结果卡片。`#resultCard` 在 DOM 上位于三个视图之外
+    //   （单份与批量共用），只隐藏 `batchRunCard` 会让上一批的复习总册
+    //   继续显示在页面下方——用户看到的就是"点了返回新建，底下还有刚才那份文档"。
+    $("resultCard").classList.add("hidden");
+    resultCardHiddenByTab = false;   // 手动隐藏，不该被 tab 切换的恢复逻辑掀开
     $("batchSetupCard").classList.remove("hidden");
     $("batchSectionBar").classList.add("hidden");
     $("batchRunStatus").textContent = "";
     $("batchStartBtn").disabled = batchFiles.length === 0;
-    loadHistory();  // 回到新建页时刷新历史（刚跑完的那批要出现在列表里）
+    // 这里**不再刷新历史**：历史已挪到独立 tab，由 switchTab 负责拉取。
   });
 
   // ---- 历史记录：查看以往生成过的总册与各节 ----
@@ -1901,60 +2252,331 @@
     paused: "已暂停", cancelled: "已停止",
   };
 
+  // ---- 历史记录：按课程归组（一门课 = 它的复习文档 + 问过的问题）----
+  //
+  // 为什么按课程而不是按时间混排：两类产物的性质不同——文档是**文件**（能下载重看），
+  // 提问是**对话**。按时间混在一起，找文档会被一堆提问淹没，反过来也一样。
+  // 而人回忆时先想起的是"那门课"，再想起"那次生成的"或"我问过的"。
+  //
+  // 归组的 key 只能是**课程名**：同一门课的课件常统一叫「讲义.pptx」
+  // （实际数据里 3 个批次各 4–5 份全叫这个），靠文件名既分不出课程也归不了组。
+
   async function loadHistory() {
+    const box = $("historyList");
+    const empty = $("historyEmpty");
+    const summary = $("historySummary");
     try {
-      const res = await fetch("/api/batches");
-      const { batches, max_files } = await res.json();
-      if (max_files) {                       // 上限由后端下发，前端不留第二份常量
-        maxBatchFiles = max_files;
-        const hint = $("maxFilesHint");
-        if (hint) hint.textContent = String(max_files);
+      // 两件事一起拉：归组数据在 /api/library；
+      // max_files 仍由 /api/batches 下发（前端不留第二份常量）。
+      const [libRes, batchRes] = await Promise.all([
+        fetch("/api/library"),
+        fetch("/api/batches"),
+      ]);
+      if (batchRes.ok) {
+        const { max_files } = await batchRes.json();
+        if (max_files) {
+          maxBatchFiles = max_files;
+          const hint = $("maxFilesHint");
+          if (hint) hint.textContent = String(max_files);
+        }
       }
-      // 排除当前正在查看/运行的那批，避免和上方视图重复
-      renderHistory((batches || []).filter((b) => b.batch_id !== batchId));
-    } catch { /* 拉不到就留空，不打扰用户 */ }
+      if (!libRes.ok) { box.innerHTML = ""; empty.classList.remove("hidden"); summary.textContent = ""; return; }
+      const d = await libRes.json();
+      const courses = d.courses || [];
+
+      const bits = [`${d.n_courses || 0} 门课程`];
+      if (d.n_unfiled) bits.push("另有未归类记录（下面单独列出）");
+      summary.textContent = courses.length ? bits.join(" · ") : "";
+      empty.classList.toggle("hidden", courses.length > 0);
+      renderHistory(courses);
+    } catch {
+      /* 拉不到就留空，不打扰用户 */
+      box.innerHTML = "";
+      summary.textContent = "";
+      empty.classList.add("hidden");
+    }
   }
 
-  function renderHistory(items) {
+  // ---------------------------------------------------------------- 统计页
+  // 数字全部来自后端只读汇总（/api/stats）。前端不做二次计算——
+  // 同一份数据在前后端各算一遍，迟早会算出两个不同的数。
+
+  async function loadStats() {
+    const box = $("statsBody");
+    const empty = $("statsEmpty");
+    try {
+      const res = await fetch("/api/stats");
+      if (!res.ok) { box.innerHTML = ""; empty.classList.remove("hidden"); return; }
+      const d = await res.json();
+      const g = d.generation || {};
+      const q = d.qa || {};
+      const hasAny = (g.n_jobs || 0) + (q.n_questions || 0) > 0;
+      empty.classList.toggle("hidden", hasAny);
+      box.innerHTML = hasAny ? renderStats(d) : "";
+    } catch {
+      box.innerHTML = "";
+      empty.classList.remove("hidden");
+    }
+  }
+
+  function fmtNum(v, digits = 0) {
+    if (v === null || v === undefined) return "—";
+    return Number(v).toLocaleString("zh-CN", { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  }
+  function kpi(k, v, unit) {
+    return `<div class="kpi"><div class="k">${k}</div><div class="v">${v}${
+      unit ? `<span class="u">${unit}</span>` : ""
+    }</div></div>`;
+  }
+
+  function renderStats(d) {
+    const g = d.generation || {};
+    const q = d.qa || {};
+    const cov = g.coverage || {};
+    const dur = g.duration_s || {};
+    const tok = g.tokens || {};
+    const ft = q.first_token_ms || {};
+    const cites = q.citations || {};
+
+    const kpis = [
+      kpi("已生成", fmtNum(g.n_jobs || 0), "份"),
+      kpi("生成花费", "¥" + fmtNum(g.cost_yuan || 0, 2), ""),
+      kpi("平均覆盖率", cov.mean === null || cov.mean === undefined ? "—" : fmtNum(cov.mean, 1), "%"),
+      kpi("单份耗时 P50", dur.p50 === null || dur.p50 === undefined ? "—" : fmtNum(dur.p50, 1), "s"),
+      kpi("提问", fmtNum(q.n_questions || 0), "次"),
+      kpi("首 token P50", ft.p50 === null || ft.p50 === undefined ? "—" : (ft.p50 / 1000).toFixed(1), "s"),
+      kpi("引用可信率", cites.pass_rate === null || cites.pass_rate === undefined ? "—" : fmtNum(cites.pass_rate, 1), "%"),
+    ].join("");
+
+    const rows = (g.courses || []).map((c) => `<tr>
+      <td>${escapeHtml2(c.course)}</td>
+      <td>${c.n_done}/${c.n_jobs}</td>
+      <td>¥${fmtNum(c.cost_yuan, 2)}</td>
+      <td>${c.tokens ? fmtNum(c.tokens) : "—"}</td>
+      <td>${c.coverage_mean === null ? "—" : fmtNum(c.coverage_mean, 1) + "%"}</td>
+      <td>${c.duration_s_median === null ? "—" : fmtNum(c.duration_s_median, 1) + "s"}</td>
+      <td>${escapeHtml2((c.models || []).join(", ") || "—")}</td>
+    </tr>`).join("");
+
+    const notes = [];
+    if ((tok.covered_jobs || 0) === 0 && (g.n_jobs || 0) > 0) {
+      notes.push("token 与耗时是 2026-10-19 之后才埋点的，之前的历史记录没有这两项，所以显示「—」而不是 0。");
+    }
+    if ((cov.n || 0) < (g.n_jobs || 0)) {
+      notes.push(`覆盖率只在算得出来的 ${cov.n || 0} 份上统计（习题档 / 术语太少时不打分），不是把缺的当 0%。`);
+    }
+    if ((g.cost_estimated_jobs || 0) > 0 && (g.cost_measured_yuan || 0) > 0) {
+      notes.push(`其中 ${g.cost_estimated_jobs} 份服务商没回 usage，成本是估算值。`);
+    }
+
+    return `<div class="kpis">${kpis}</div>
+      <h4 class="stat-h">按课程</h4>
+      <table class="stat-table">
+        <thead><tr><th>课程</th><th>完成/总数</th><th>花费</th><th>tokens</th><th>平均覆盖率</th><th>单份耗时</th><th>模型</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="7">还没有生成记录</td></tr>`}</tbody>
+      </table>
+      <h4 class="stat-h">问答</h4>
+      <table class="stat-table">
+        <thead><tr><th>指标</th><th>读数</th></tr></thead>
+        <tbody>
+          <tr><td>提问次数</td><td>${fmtNum(q.n_questions || 0)}</td></tr>
+          <tr><td>问答花费</td><td>¥${fmtNum(q.cost_yuan || 0, 4)}</td></tr>
+          <tr><td>首 token P50 / P90</td><td>${fmtNum(ft.p50, 1)} / ${fmtNum(ft.p90, 1)} ms</td></tr>
+          <tr><td>改写耗时 P50</td><td>${fmtNum((q.rewrite_ms || {}).p50, 1)} ms</td></tr>
+          <tr><td>引用核验</td><td>${cites.total ? `${cites.supported}/${cites.total} 可信（${fmtNum(cites.pass_rate, 1)}%）` : "—"}</td></tr>
+        </tbody>
+      </table>
+      ${notes.length ? `<div class="stat-note">${notes.map((n) => "· " + n).join("<br>")}</div>` : ""}`;
+  }
+
+  function escapeHtml2(s) {
+    return String(s === null || s === undefined ? "" : s).replace(/[&<>"]/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])
+    );
+  }
+
+  function renderHistory(courses) {
     const box = $("historyList");
-    const card = $("batchHistory");
     box.innerHTML = "";
-    if (!items.length) { card.classList.add("hidden"); return; }
-    card.classList.remove("hidden");
+    if (!courses.length) return;
 
-    items.forEach((b) => {
-      const openable = (b.done || 0) > 0;  // 全失败的没有内容可看
-      const row = document.createElement("div");
-      row.className = "jrow" + (openable ? " click" : "");
+    courses.forEach((c, idx) => {
+      // 「未归类」的 key 用 \x00 开头（后端约定），不是真的课程名
+      const unfiled = String(c.key || "").charCodeAt(0) === 0;
 
-      const col = document.createElement("div");
-      col.style.cssText = "flex:1;min-width:0;";
-      const name = document.createElement("div");
-      name.className = "jname";
-      name.textContent = `《${b.course_name || "未命名课程"}》`;
-      col.appendChild(name);
+      const wrap = document.createElement("div");
+      wrap.style.cssText =
+        "margin-bottom:8px; border:1px solid var(--border); border-radius:8px; overflow:hidden";
 
-      const bits = [H_STATUS[b.status] || b.status, `完成 ${b.done}/${b.total}`];
-      if (b.spent_yuan > 0) bits.push(`约 ¥${b.spent_yuan}`);
-      if (b.updated_at) bits.push(String(b.updated_at).slice(0, 16));
-      const meta = document.createElement("div");
-      meta.className = "jinfo";
-      meta.textContent = bits.join(" · ");
-      col.appendChild(meta);
-      row.appendChild(col);
+      // ---- 课程头 ----
+      const head = document.createElement("div");
+      head.className = "jrow click";
+      head.style.cssText = "margin:0; border-radius:0; align-items:flex-start";
 
-      const tail = document.createElement("span");
-      tail.className = "jopen";
-      tail.textContent = openable ? "查看 →" : "无内容";
-      row.appendChild(tail);
+      const hcol = document.createElement("div");
+      hcol.style.cssText = "flex:1;min-width:0;";
+      const hname = document.createElement("div");
+      hname.className = "jname";
+      hname.textContent = unfiled ? c.name : `《${c.name}》`;
+      hcol.appendChild(hname);
 
-      if (openable) row.addEventListener("click", () => openHistoryBatch(b.batch_id));
-      box.appendChild(row);
+      const bits = [];
+      if (c.n_docs) bits.push(`${c.n_docs} 份文档`);
+      if (c.n_qas) bits.push(`${c.n_qas} 个问题`);
+      const when = String(c.last_active || "").replace("T", " ").slice(0, 16);
+      if (when) bits.push(`最近 ${when}`);
+      const hmeta = document.createElement("div");
+      hmeta.className = "jinfo";
+      hmeta.textContent = bits.join(" · ");
+      hcol.appendChild(hmeta);
+
+      if (unfiled) {
+        const tip = document.createElement("div");
+        tip.className = "jinfo";
+        tip.style.cssText = "color:#b26a00; margin-top:2px";
+        tip.textContent = "这些记录建档时没填课程名。下次就同一批课件提问/生成时填上，会自动归过来。";
+        hcol.appendChild(tip);
+      }
+      head.appendChild(hcol);
+
+      const arrow = document.createElement("span");
+      arrow.className = "jopen";
+      arrow.textContent = "展开 ▾";
+      head.appendChild(arrow);
+      wrap.appendChild(head);
+
+      // ---- 课程体 ----
+      const body = document.createElement("div");
+      body.className = "hidden";
+      body.style.cssText = "padding:0 12px 10px";
+      wrap.appendChild(body);
+
+      // 默认展开最新的一门：进页面第一眼就能看到最近在做什么，又不会一屏铺满
+      let opened = idx === 0;
+      const syncBody = () => {
+        body.classList.toggle("hidden", !opened);
+        arrow.textContent = opened ? "收起 ▴" : "展开 ▾";
+      };
+      head.addEventListener("click", () => { opened = !opened; syncBody(); });
+
+      if (c.n_docs) {
+        body.appendChild(sectionLabel("复习文档"));
+        c.docs.forEach((d) => body.appendChild(docRow(d)));
+      }
+      if (c.n_qas) {
+        body.appendChild(sectionLabel("问过的问题"));
+        c.qas.forEach((q) => body.appendChild(qaRow(q)));
+      }
+      if (!c.n_docs && !c.n_qas) {
+        body.appendChild(sectionLabel("（没有记录）"));
+      }
+
+      syncBody();
+      box.appendChild(wrap);
     });
+  }
+
+  function sectionLabel(text) {
+    const el = document.createElement("div");
+    el.className = "meta";
+    el.style.cssText = "margin:8px 0 4px; font-weight:600; color:var(--fg, inherit)";
+    el.textContent = text;
+    return el;
+  }
+
+  function docRow(d) {
+    const openable = d.openable;
+    const row = document.createElement("div");
+    row.className = "jrow" + (openable ? " click" : "");
+    row.style.cssText = "margin:0 0 4px; padding:6px 8px";
+
+    const col = document.createElement("div");
+    col.style.cssText = "flex:1;min-width:0;";
+    const name = document.createElement("div");
+    name.className = "jinfo";
+    name.textContent = "复习总册";
+    col.appendChild(name);
+
+    const bits = [H_STATUS[d.status] || d.status, `完成 ${d.done}/${d.total}`];
+    if (d.error) bits.push(`${d.error} 失败`);
+    if (d.spent_yuan > 0) bits.push(`约 ¥${d.spent_yuan}`);
+    if (d.updated_at) bits.push(String(d.updated_at).slice(0, 16));
+    const meta = document.createElement("div");
+    meta.className = "jinfo";
+    meta.textContent = bits.join(" · ");
+    col.appendChild(meta);
+    row.appendChild(col);
+
+    const tail = document.createElement("span");
+    tail.className = "jopen";
+    tail.textContent = openable ? "查看 →" : "无内容";
+    row.appendChild(tail);
+    if (openable) row.addEventListener("click", () => openHistoryBatch(d.batch_id));
+    return row;
+  }
+
+  // 提问行：点开就地展开**那一次**的答案，而不是重问。
+  // 重问需要知识库缓存还在（72 小时），而历史的意义恰是"过很久还能翻"——
+  // 所以这里只读已存的答案，零依赖、零成本、永不失败。
+  function qaRow(q) {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "border-bottom:1px dashed var(--border); padding:6px 0";
+
+    const head = document.createElement("div");
+    head.style.cssText = "cursor:pointer; display:flex; gap:8px; align-items:baseline";
+
+    const when = String(q.ts || "").replace("T", " ").slice(5, 16);
+    const qtext = document.createElement("div");
+    qtext.style.cssText = "flex:1;min-width:0;";
+    qtext.innerHTML =
+      `<a href="#" style="color:inherit">${linkifyHtml(q.question)}</a>`;
+
+    const info = [];
+    if (q.no_hit) {
+      info.push('<span style="color:#b26a00">未检索到内容</span>');
+    } else {
+      info.push(`${q.n_hits} 处原文`);
+    }
+    const c4 = q.citations || {};
+    if (c4.total) {
+      const bad = (c4.weak || 0) + (c4.not_found || 0);
+      const tip = bad
+        ? `<span style="color:#b26a00">${bad} 条待核</span>`
+        : "全部可信";
+      info.push(`引用 ${c4.total} 条（${tip}）`);
+    }
+    const meta = document.createElement("div");
+    meta.className = "jinfo";
+    meta.innerHTML = `${linkifyHtml(when)} · ${info.join(" · ")} · ${q.elapsed_s || "?"}s`;
+    qtext.appendChild(meta);
+    head.appendChild(qtext);
+    wrap.appendChild(head);
+
+    const body = document.createElement("div");
+    body.className = "hidden";
+    body.style.cssText = "margin-top:8px; font-size:14px";
+    wrap.appendChild(body);
+    let built = false;
+
+    head.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (!built) {
+        built = true;
+        body.innerHTML = q.answer
+          ? DOMPurify.sanitize(marked.parse(q.answer))
+          : '<div class="meta">（这次提问没有生成答案）</div>';
+      }
+      body.classList.toggle("hidden");
+    });
+    return wrap;
   }
 
   async function openHistoryBatch(id) {
     bSetStatus("正在打开历史记录…");
+    // 先把共享的结果卡片藏起来：切到批量 tab 时它可能还留着上一份内容，
+    // 等新数据到了再显示，避免"闪一下别人的文档"。
+    $("resultCard").classList.add("hidden");
+    resultCardHiddenByTab = false;
     try {
       const res = await fetch(`/api/batch/${id}`);
       if (!res.ok) { bSetStatus("打开失败：任务不存在或已被清理", "error"); return; }

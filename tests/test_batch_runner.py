@@ -5,6 +5,8 @@
 """
 from pathlib import Path
 
+import json
+
 from app.models import ExtractionResult, SlideContent
 from app.services.ai_generator import GenerateOutcome
 from app.services.batch_runner import (
@@ -144,8 +146,26 @@ def test_run_records_usage_cost(tmp_path):
     assert job.status == STATUS_DONE
     assert job.cost_yuan == round((500_000 * 3 + 500_000 * 9) / 1_000_000, 4)  # 6.0
     assert job.cost_is_estimate is False
-    meta = (batch.job_dir_of(job) / META_JSON).read_text(encoding="utf-8")
-    assert '"usage"' in meta and "prompt_tokens" in meta
+    # 埋点（P4）：只有成本没有 token，事后算不出"输入长还是输出长"，
+    # 也没法做跨模型同口径对比
+    assert job.prompt_tokens == 500_000
+    assert job.completion_tokens == 500_000
+    assert job.duration_s >= 0
+    assert job.model, "模型名要随 job 落盘，否则同一门课换模型后分不清"
+    meta = json.loads((batch.job_dir_of(job) / META_JSON).read_text(encoding="utf-8"))
+    assert meta["prompt_tokens"] == 500_000
+    assert "duration_s" in meta and "model" in meta
+
+
+def test_error_job_still_records_duration(tmp_path):
+    """失败也要有耗时：否则"慢在哪一份"永远查不出来，只有成功的份有数据。"""
+    batch = _make_batch(tmp_path, n=1)
+    rec = _Recorder(raises={"第1章-讲义.pptx": RuntimeError("boom")})
+    BatchRunner(batch, extract_fn=_fake_extract(), generate_fn=rec.gen).run()
+    job = batch.jobs[0]
+    assert job.status == STATUS_ERROR
+    assert job.duration_s >= 0
+    assert job.prompt_tokens == 0  # 没花 token，如实为 0
 
 
 def test_truncated_warns(tmp_path):
