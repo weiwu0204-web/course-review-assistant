@@ -2,7 +2,7 @@
 //
 // 为什么需要它：前端的覆盖率徽标/明细是纯 DOM 拼装，pytest 覆盖不到；
 // 只做语法检查（node --check）也抓不出运行时与结构错误。这里用最小 DOM 桩
-// 把 **index.html 里真实的渲染代码**抽出来跑一遍，断言 DOM 结构与文案。
+// 把桌面端真实的渲染代码抽出来跑一遍，断言 DOM 结构与文案。
 //
 // 它不是完整 DOM 实现，只是一层足够用的壳；目的是「跑得起来 + 结构对 + 文案对」。
 //
@@ -13,14 +13,11 @@
 const fs = require('fs');
 const path = require('path');
 
-const HTML = path.join(__dirname, '..', 'app', 'static', 'index.html');
+const SCRIPT = path.join(__dirname, '..', 'app', 'static', 'desktop', 'ui.js');
 
 // ---------- 从真实页面抽出渲染代码（不复制粘贴，避免两处漂移） ----------
 function extractHelpers() {
-  const html = fs.readFileSync(HTML, 'utf8');
-  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
-  if (!scripts.length) { throw new Error('index.html 里找不到 <script>'); }
-  const js = scripts[scripts.length - 1][1];
+  const js = fs.readFileSync(SCRIPT, 'utf8');
   const start = js.indexOf('// ---- 覆盖率回检展示（P1）----');
   const end = js.indexOf('function renderMarkdown(md, opts');
   if (start < 0 || end < 0 || end <= start) {
