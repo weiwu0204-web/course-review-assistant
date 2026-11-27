@@ -38,9 +38,9 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Iterator
+from typing import Callable, Iterator
 
-from app.config import OUTPUT_ROOT, current_provider, get_settings
+from app.config import OUTPUT_ROOT, Settings, current_provider, get_settings
 from app.services.agent_repair import token_cost
 from app.services.ai_generator import build_client, _create_completion
 from app.services.kb import KnowledgeBase
@@ -136,6 +136,8 @@ def rewrite_query(
     question: str,
     kb: KnowledgeBase,
     enabled: bool = True,
+    *,
+    settings_override: Settings | None = None,
 ) -> RewriteResult:
     """把口语提问改写成术语式检索式。任何失败都降级为原 query。
 
@@ -145,7 +147,7 @@ def rewrite_query(
     if not enabled:
         return RewriteResult(question, question, applied=False, note="未开启改写")
 
-    settings = get_settings()
+    settings = settings_override if settings_override is not None else get_settings()
     if not settings.ai_api_key:
         return RewriteResult(question, question, applied=False, note="未配置 API Key，已跳过改写")
 
@@ -153,7 +155,7 @@ def rewrite_query(
     term_hint = "、".join(terms) if terms else "（本课未提取到术语表）"
 
     try:
-        provider = current_provider()
+        provider = current_provider() if settings_override is None else {}
         client = build_client(settings)
         kwargs = {
             "model": settings.ai_model,
@@ -237,6 +239,10 @@ def answer_stream(
     scope: str | None = None,
     use_rewrite: bool = True,
     require_citation: bool = True,
+    *,
+    settings_override: Settings | None = None,
+    history_sink: Callable[[str, dict], None] | None = None,
+    demo: bool = False,
 ) -> Iterator[dict]:
     """产出问答的事件流（每个事件是一个 dict，由路由层编码成 SSE）。
 
@@ -255,7 +261,7 @@ def answer_stream(
     t_start = time.perf_counter()
 
     # ① 改写
-    rw = rewrite_query(question, kb, enabled=use_rewrite)
+    rw = rewrite_query(question, kb, enabled=use_rewrite and not demo, settings_override=settings_override)
     t_rewrite = time.perf_counter() - t_start
     yield {"type": "rewrite", **rw.to_dict()}
 
@@ -268,6 +274,9 @@ def answer_stream(
         require_citation=require_citation,
         t_start=t_start,
         t_rewrite=t_rewrite,
+        settings_override=settings_override,
+        history_sink=history_sink,
+        demo=demo,
     )
 
 
@@ -281,6 +290,9 @@ def answer_from_rewrite(
     require_citation: bool = True,
     t_start: float | None = None,
     t_rewrite: float = 0.0,
+    settings_override: Settings | None = None,
+    history_sink: Callable[[str, dict], None] | None = None,
+    demo: bool = False,
 ) -> Iterator[dict]:
     """② 检索 → ③ 生成 → ④ 核验 → ⑤ 落盘，从「已完成的改写」接着跑。
 
@@ -290,6 +302,7 @@ def answer_from_rewrite(
     """
     t_start = time.perf_counter() if t_start is None else t_start
 
+    record_history = append_qa_log if history_sink is None else history_sink
     # ② 检索
     t_r0 = time.perf_counter()
     hits = kb.index.search(rw.rewritten, topk=topk, scope=scope)
@@ -304,7 +317,7 @@ def answer_from_rewrite(
         }
         # 「问了但没找到」同样值得记：它说明这个问题在这门课的课件里没有落点，
         # 要么是问偏了，要么是课件本身缺这块内容。
-        append_qa_log(
+        record_history(
             kb.kb_id,
             {
                 "ts": datetime.now().isoformat(timespec="seconds"),
@@ -343,15 +356,15 @@ def answer_from_rewrite(
     }
 
     # ③ 流式生成
-    settings = get_settings()
-    if not settings.ai_api_key:
+    settings = settings_override if settings_override is not None else (None if demo else get_settings())
+    if not demo and not settings.ai_api_key:
         yield {"type": "error", "message": "未配置 API Key：请在设置页填写后再试"}
         return
 
-    provider = current_provider()
+    provider = current_provider() if settings_override is None and not demo else {}
     system_prompt = ANSWER_SYSTEM if require_citation else ANSWER_SYSTEM_NO_CITATION
     kwargs = {
-        "model": settings.ai_model,
+        "model": settings.ai_model if settings else "",
         "messages": [
             {"role": "system", "content": system_prompt},
             {
@@ -362,34 +375,44 @@ def answer_from_rewrite(
         "max_tokens": QA_MAX_TOKENS,
         "stream": True,
     }
-    if settings.ai_thinking_off:
+    if settings and settings.ai_thinking_off:
         kwargs["extra_body"] = settings.ai_thinking_off
 
     answer_parts: list[str] = []
     usage: dict | None = None
     t_first_token: float | None = None
     try:
-        client = build_client(settings)
-        stream = client.chat.completions.create(**kwargs)
-        for chunk in stream:
-            if not chunk.choices:
-                continue
-            delta = chunk.choices[0].delta
-            piece = getattr(delta, "content", None)
-            if piece:
-                if t_first_token is None:
-                    t_first_token = time.perf_counter() - t_start
-                answer_parts.append(piece)
-                yield {"type": "delta", "text": piece}
-            # 部分服务商在最后一个 chunk 里回传 usage（需 stream_options）
-            chunk_usage = getattr(chunk, "usage", None)
-            if chunk_usage is not None:
-                usage = {
-                    "prompt_tokens": int(getattr(chunk_usage, "prompt_tokens", 0) or 0),
-                    "completion_tokens": int(getattr(chunk_usage, "completion_tokens", 0) or 0),
-                }
+        if demo:
+            source = hits[0].chunk
+            piece = f"演示：以下是检索到的原文。\n\n{source.text[:300]}【{source.file} 第 {source.page} 页】"
+            answer_parts.append(piece)
+            t_first_token = time.perf_counter() - t_start
+            yield {"type": "delta", "text": piece}
+        else:
+            client = build_client(settings)
+            stream = client.chat.completions.create(**kwargs)
+            try:
+                for chunk in stream:
+                    if chunk.choices:
+                        piece = getattr(chunk.choices[0].delta, "content", None)
+                        if piece:
+                            if t_first_token is None:
+                                t_first_token = time.perf_counter() - t_start
+                            answer_parts.append(piece)
+                            yield {"type": "delta", "text": piece}
+                    # Some providers send usage in the last item without a choice.
+                    chunk_usage = getattr(chunk, "usage", None)
+                    if chunk_usage is not None:
+                        usage = {
+                            "prompt_tokens": int(getattr(chunk_usage, "prompt_tokens", 0) or 0),
+                            "completion_tokens": int(getattr(chunk_usage, "completion_tokens", 0) or 0),
+                        }
+            finally:
+                if close := getattr(stream, "close", None):
+                    close()
     except Exception as exc:  # noqa: BLE001 流式已开始，只能以事件形式报告
-        yield {"type": "error", "message": f"生成失败：{type(exc).__name__}: {exc}"}
+        message = f"生成失败：{type(exc).__name__}: {exc}" if settings_override is None and not demo else "生成失败，请稍后重试"
+        yield {"type": "error", "message": message}
         return
 
     answer = "".join(answer_parts)
@@ -413,7 +436,7 @@ def answer_from_rewrite(
 
     # ⑤ 落盘。用户要能回看"上次问过什么、怎么答的"；
     #    复习场景下这份历史还等于**薄弱点清单**（问得多的地方就是不会的地方）。
-    append_qa_log(
+    record_history(
         kb.kb_id,
         {
             "ts": datetime.now().isoformat(timespec="seconds"),

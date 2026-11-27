@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>复习助手</title>
+  <link rel="stylesheet" href="/assets/workspace.css">
+  <script type="module" src="/assets/workspace.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <div><p class="eyebrow">课程工作台</p><h1>复习助手</h1></div>
+      <div class="row"><span id="account-name"></span><button id="logout" class="secondary" type="button" hidden>退出</button></div>
+    </div>
+  </header>
+  <main class="wrap">
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+    <section id="login-panel" class="panel login">
+      <h2>登录</h2>
+      <p class="muted">登录后查看自己的课程、复习手册和问答记录。</p>
+      <form id="login-form" class="stack">
+        <label>账号<input name="username" autocomplete="username" required maxlength="64"></label>
+        <label>密码<input name="password" type="password" autocomplete="current-password" required maxlength="256"></label>
+        <button type="submit">进入工作台</button>
+      </form>
+    </section>
+    <div id="workspace" class="stack" hidden>
+      <section class="panel">
+        <div class="section-header"><div><h2>我的课程</h2><p id="stats" class="muted"></p></div></div>
+        <div class="row course-picker">
+          <label>当前课程<select id="course"></select></label>
+          <form id="course-form" class="row aligned"><label>课程名称<input name="title" required maxlength="200" placeholder="例如：操作系统"></label><button type="submit">创建课程</button></form>
+        </div>
+      </section>
+      <p id="course-empty" class="empty" hidden>先创建一门课程，就可以上传课件和试题。</p>
+      <div id="course-tools" class="grid" hidden>
+        <section class="panel">
+          <h2>课件与试题</h2>
+          <p class="muted">勾选参加本次生成或建库的课件。发布新版不会影响旧任务或知识库。</p>
+          <form id="upload-form" class="stack">
+            <div class="row">
+              <label>用途<select name="kind"><option value="courseware">课件</option><option value="exam">试题</option></select></label>
+              <label>资料<select name="material"><option value="">添加新资料</option></select></label>
+            </div>
+            <div class="row aligned"><label>文件<input name="file" type="file" accept=".pptx,.pdf" required></label><button type="submit">上传</button></div>
+          </form>
+          <div id="materials" class="items"></div>
+        </section>
+        <section class="panel">
+          <h2>复习手册</h2>
+          <p class="muted">按勾选顺序生成。可以附上试题，失败时单独重试相应章节。</p>
+          <form id="batch-form" class="stack">
+            <div class="row">
+              <label>试题<select name="exam"><option value="">不附试题</option></select></label>
+              <label>试题用法<select name="exam_mode"><option value="direct">整理题源</option><option value="predict">生成模拟题</option></select></label>
+            </div>
+            <div class="row">
+              <label>文档类型<select name="template"><option>复习指南</option><option>重点总结</option><option>习题生成</option></select></label>
+              <label>篇幅<select name="style"><option>详细</option><option>精简</option><option>表格化</option></select></label>
+            </div>
+            <div class="checks"><label><input type="checkbox" name="use_vision"> 解析图片</label><label id="repair-option" hidden><input type="checkbox" name="enable_repair"> 自动补漏</label></div>
+            <button type="submit" id="generate">生成手册</button>
+          </form>
+          <div class="divider">
+            <label>历史任务<select id="batch"><option value="">请选择任务</option></select></label>
+            <p id="batch-state" aria-live="polite"></p>
+            <ol id="jobs" class="items"></ol>
+            <div class="row">
+              <button id="refresh-batch" class="secondary" type="button" disabled>刷新进度</button>
+              <button id="retry-batch" class="secondary" type="button" disabled>重试失败项</button>
+              <button id="cancel-batch" class="secondary" type="button" disabled>取消</button>
+              <button id="download" type="button" disabled>下载 Markdown</button>
+            </div>
+          </div>
+        </section>
+        <section class="panel study">
+          <div class="section-header"><div><h2>课件问答</h2><p class="muted">新建知识库会固定勾选课件的当前版本。</p></div><button id="build-kb" type="button">按所选课件建库</button></div>
+          <div class="grid study-content">
+            <div class="stack">
+              <label>知识库<select id="kb"></select></label>
+              <p id="kb-summary" class="muted"></p>
+              <form id="ask-form" class="stack">
+                <label>问题<textarea name="question" required maxlength="1000" rows="3" placeholder="这份课件中最重要的定义是什么？"></textarea></label>
+                <button id="ask" type="submit" disabled>提问</button>
+              </form>
+            </div>
+            <div class="stack">
+              <section class="answer-block"><h3>回答</h3><div id="answer" role="status" class="answer">选择知识库后即可提问。</div></section>
+              <section><h3>参考课件</h3><ul id="sources" class="items"></ul></section>
+              <section><h3>问答记录</h3><ul id="history" class="items"></ul></section>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

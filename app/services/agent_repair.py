@@ -32,7 +32,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from app.config import current_provider, get_settings
+from app.config import Settings, current_provider, get_settings
 from app.models import (
     ExtractionResult,
     RepairRecord,
@@ -297,6 +297,7 @@ def repair_document(
     workdir: Path,
     base_cost_yuan: float = 0.0,
     provider: dict | None = None,
+    settings_override: Settings | None = None,
 ) -> tuple[str, RepairRecord]:
     """跑一次补漏，返回 ``(最终文档, 记录)``。
 
@@ -313,8 +314,8 @@ def repair_document(
         # 原文备份：既是回滚依据，也是给用户对照"补了什么"的底本
         (workdir / "doc.md.pre-repair").write_text(markdown, encoding="utf-8")
 
-        settings = get_settings()
-        prov = provider or (current_provider() or {})
+        settings = settings_override if settings_override is not None else get_settings()
+        prov = provider if provider is not None else ((current_provider() or {}) if settings_override is None else {})
         pin, pout = _prices(prov)
         budget = _budget(base_cost_yuan)
 

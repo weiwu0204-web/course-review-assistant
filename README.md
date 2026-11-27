@@ -1,6 +1,8 @@
 # 📚 PPT 复习助手
 
-大学生期末周救星：上传老师的课件（PPT / PDF），自动提取内容，用 AI 生成结构化的复习文档（复习指南 / 重点总结 / 模拟习题）。
+多人服务版的范围、启动方法和回滚办法见 [服务版私有预览](docs/runbooks/service-preview.md)。以下是桌面版说明。
+
+不同学校的同名专业课在授课范围和考法上有差异。复习助手用本校课件（PPT / PDF）确定复习范围，结合往年试题生成可追溯到课件页码的复习手册。
 
 > 📖 设计与决策记录在 [docs/](./docs/)：[项目描述](docs/PROJECT.md) ·
 > [架构思路](docs/ARCHITECTURE.md) · [版本记录](docs/CHANGELOG.md) ·
@@ -28,12 +30,12 @@
 - 🔍 **覆盖率回检**：生成后自动比对「源课件的知识点术语 ↔ 成品文档」，逐节给出覆盖率，
   并列出**疑似未覆盖**的条目（**带源课件页码**，一眼能核对）。纯本地文本比对，
   **不额外花一分钱**；「复习指南 / 详细」档才有意义，其它档位会说明原因而不是硬打分
-  （详见 [docs/P1-COVERAGE.md](docs/P1-COVERAGE.md)）
+  （详见 [docs/P1-COVERAGE.md](docs/archive/desktop/P1-COVERAGE.md)）
 - 🔧 **覆盖率不足时自动补漏**：低于 94% 时，一个带 **MCP 工具**的 Agent 会自己去查缺失清单、
   读源课件页、提交结构化补丁、即时验证效果，直到达标或触达成本上限。**只补不重写**
   （补丁由程序插入，模型碰不到原文）、**没提升就回滚**、全过程留痕（补了几轮、花了多少钱）。
-  默认关闭；对已达标的文档**零触发、零成本**（详见 [docs/P2-ACCEPTANCE.md](docs/P2-ACCEPTANCE.md)）
-- 📚 **整课批量生成**：一次拖入一门课的多份 PPT（≤20），逐份生成后自动汇编成一份《整门课复习总册》——自动目录、出处锚点、正文原样不改写；逐份进度与费用可见、可停止/续跑/重试失败份，中途关页面任务照跑（详见 [docs/P0-ARCHITECTURE.md](docs/P0-ARCHITECTURE.md)）
+  默认关闭；对已达标的文档**零触发、零成本**（详见 [docs/P2-ACCEPTANCE.md](docs/archive/desktop/P2-ACCEPTANCE.md)）
+- 📚 **整课批量生成**：一次拖入一门课的多份 PPT（≤20），逐份生成后自动汇编成一份《整门课复习总册》——自动目录、出处锚点、正文原样不改写；逐份进度与费用可见、可停止/续跑/重试失败份，中途关页面任务照跑（详见 [docs/P0-ARCHITECTURE.md](docs/archive/desktop/P0-ARCHITECTURE.md)）
 
 ## 🧱 提取分三层，越靠前越便宜
 
@@ -204,7 +206,7 @@ AI 生成的复习文档最大的隐患不是「写得差」，而是**漏了东
 - 术语有三条来源：英文/技术术语、数字阈值、**中文术语（按课件内频次挖掘，不依赖分词库）**
 - 措辞很克制：判据是**词面**的，术语没出现也可能只是换了说法（`cipher suites`→「加密套件」），
   所以一律说「**疑似**」，判断权交回用户
-- 判据与阈值都是**用真实数据标定**的，不是拍脑袋：详见 [docs/P1-COVERAGE.md](docs/P1-COVERAGE.md)
+- 判据与阈值都是**用真实数据标定**的，不是拍脑袋：详见 [docs/P1-COVERAGE.md](docs/archive/desktop/P1-COVERAGE.md)
 
 ### 复现与回归
 
@@ -268,7 +270,7 @@ uv run python scripts/verify_coverage.py --batch <batch_id> --compare 某文档.
   否则就是「拿一个不成立的承诺去指责文档」
 - **不为了凑覆盖率罗列术语**：抽查 20 条补入内容，100% 都是「术语 + 实质说明」
 
-八项验收标准与逐项证据见 **[docs/P2-ACCEPTANCE.md](docs/P2-ACCEPTANCE.md)**（含六条限制的如实记录）。
+八项验收标准与逐项证据见 **[docs/P2-ACCEPTANCE.md](docs/archive/desktop/P2-ACCEPTANCE.md)**（含六条限制的如实记录）。
 
 ## 🔧 项目结构
 
@@ -300,7 +302,7 @@ ppt-reviewer/
 │   │   ├── doc_patch.py      # P2：补丁插入（「只补不改」由程序结构保证）
 │   │   ├── cost_estimate.py  # 生成前成本预估（按服务商单价粗估 token 与费用）
 │   │   └── user_config.py    # 用户 API Key 存储（%APPDATA% settings.json）
-│   └── static/index.html   # 前端页面
+│   └── static/             # 桌面页面入口 index.html，样式和脚本位于 desktop/
 ├── scripts/
 │   ├── _pptx_utils.py      # 自动发现 .pptx（命令行可不传文件名）
 │   ├── diagnose.py         # 提取覆盖率诊断 + 视觉成本估算
@@ -331,7 +333,7 @@ ppt-reviewer/
 | POST | `/api/extract` | 上传课件（`.pptx` / `.pdf`），提取内容并导出图片（`?with_images=true`） |
 | POST | `/api/exam` | 解析往年试题（文本或文件），返回 exam_id |
 | POST | `/api/generate` | 基于已上传的课件生成复习文档 |
-| POST | `/api/batch/peek` · `/api/batch/start` | 批量：单份速览估价 / 建批并后台串行生成（详见 [P0-ARCHITECTURE.md](./docs/P0-ARCHITECTURE.md)） |
+| POST | `/api/batch/peek` · `/api/batch/start` | 批量：单份速览估价 / 建批并后台串行生成（详见 [P0-ARCHITECTURE.md](./docs/archive/desktop/P0-ARCHITECTURE.md)） |
 | GET  | `/api/batch/{id}/coverage/{idx}` | 取某节覆盖率明细（疑似未覆盖条目 + 出处页码），供前端下钻 |
 | GET  | `/api/health`  | 健康检查 |
 | GET  | `/api/settings/status` | 是否已配置 key（configured / provider / 档位 tier / 来源 / 掩码尾部） |
@@ -362,7 +364,7 @@ Kimi k2.6 6.5/27、通义 qwen3.7-plus 2/8。
 - `uploads/` 上传副本保留 24h 后自动清理（.env 可调 `UPLOAD_TTL_HOURS`）
 - **覆盖率是「词面」判据，不是语义判据**：术语没出现也可能只是被换了说法，
   因此一律显示为「疑似未覆盖」；要彻底消除这类误报需要上 embedding 或再花一次模型调用，
-  目前认为不值得（见 [docs/P1-COVERAGE.md](docs/P1-COVERAGE.md) 的取舍说明）
+  目前认为不值得（见 [docs/P1-COVERAGE.md](docs/archive/desktop/P1-COVERAGE.md) 的取舍说明）
 - 覆盖率**只对「复习指南 / 详细」有意义**——习题生成、重点总结、精简本就不追求全覆盖，
   这些档位不计算覆盖率，界面会说明原因而不是给一个误导性的低分
 - 术语数少于 8 个时不给百分比（显示「覆盖样本不足」）：样本太小时一个词的出入就是几十个百分点
