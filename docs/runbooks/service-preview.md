@@ -25,7 +25,7 @@ docker compose --env-file .service.env -p ppt-review-preview -f deploy/compose.y
 
 ## 快速回滚
 
-- 桌面版：回原目录运行，基线是 `baseline/desktop-0.11.0`（`7ee595b`）。需要另开干净目录时，从原仓库执行 `git worktree add --detach ../ppt-reviewer-desktop-restore baseline/desktop-0.11.0`，保留现有文件和私人资料。
+- 桌面版：回原目录运行，基线是 `baseline/desktop-0.11.0`（`3ac947a`）。需要另开干净目录时，从原仓库执行 `git worktree add --detach ../ppt-reviewer-desktop-restore baseline/desktop-0.11.0`，保留现有文件和私人资料。
 - 服务版保留镜像 `ppt-reviewer-service:preview-0.1.0` 与 `ppt-reviewer-service:preview-0.1.1`。若旧镜像缺失，可在独立工作树从对应 Git 标签重建。
 - 先停止新提交，确认没有尚需 002 处理的自动补漏任务。候选服务故障且仍有此类任务时，保持 worker 停止，仅恢复旧 API（下面命令的末尾只留 `api`）。恢复 002 后再启动 worker。
 - 使用原 Compose 项目和环境文件，保留数据库和对象存储数据卷。用 `PPT_SERVICE_IMAGE_TAG` 选择旧镜像并启动：

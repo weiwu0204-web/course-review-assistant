@@ -4,7 +4,7 @@
 - [001 服务基础规格](specs/001-courseware-revision/spec.md) · [002 学习工作台规格](specs/002-service-study/spec.md) · [002 实施任务](specs/002-service-study/tasks.md)
 - [服务版启动与回滚](runbooks/service-preview.md)
 - [验收与回滚记录](runbooks/service-verification.md) · [ADR 0001：桌面与服务版分开运行](decisions/0001-service-preview.md)
-- 桌面版保全点：`baseline/desktop-0.11.0`（`7ee595b`）。下面保留现有桌面说明、实验和历史决策。
+- 桌面版保全点：`baseline/desktop-0.11.0`（`3ac947a`）。下面保留现有桌面说明、实验和历史决策。
 - [桌面历史设计与验收](archive/desktop/README.md)
 
 | 文档 | 内容 |
