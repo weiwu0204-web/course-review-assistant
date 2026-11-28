@@ -5,6 +5,10 @@ on:
   push:
     branches: [main, 'refactor/**']
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   regression:
     runs-on: ubuntu-latest
@@ -15,9 +19,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+          cache: 'pip'
+          cache-dependency-path: requirements*.txt
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: python -m pip install -r requirements-service.txt
+      - run: python -m pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: python -m scripts.check_docs
       - run: python -m pytest -q
       - run: node tests/test_coverage_ui.js
