@@ -34,6 +34,7 @@ verified: 274dde4
 | [ADR 0003：不可变对象键与先对象后元数据提交](decisions/0003-object-store-without-cross-store-tx.md) | `current` | 无跨库分布式事务下的数据一致性保证 |
 | [ADR 0004：按页 BM25 与读取时从分块重建索引](decisions/0004-bm25-rebuilt-per-library.md) | `current` | 零向量库依赖的实测依据与多实例无状态设计 |
 | [ADR 0005：知识库问答使用 SSE 单向流](decisions/0005-sse-for-qa.md) | `current` | 来源、流式答案与引用核验的事件流协议取舍 |
+| [复盘：001/002 服务版重构过程与改进](retros/2026-11-service-refactor.md) | `current` | 早期提交粒度、规格留痕与语料脱敏问题复盘及对应新机制 |
 
 ---
 
