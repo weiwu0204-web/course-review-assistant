@@ -44,7 +44,6 @@ from app.config import OUTPUT_ROOT, Settings, current_provider, get_settings
 from app.services.agent_repair import token_cost
 from app.services.ai_generator import build_client, _create_completion
 from app.services.kb import KnowledgeBase
-from app.services.retriever import Chunk
 
 #: 问答回答的输出上限。复习答疑是短文本，不需要生成文档那种 32k 余量；
 #: 设小一点还能绕开"部分服务商拒绝过大 max_tokens"的降级路径。

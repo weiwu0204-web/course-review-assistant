@@ -7,7 +7,6 @@
 import sys
 import tempfile
 import time
-from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -47,7 +46,6 @@ def main() -> None:
 
     out_dir = Path("eval")
     out_dir.mkdir(exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d_%H%M")
     out = out_dir / f"step0_{src.stem}_{template}.md"
     out.write_text(markdown, encoding="utf-8")
 

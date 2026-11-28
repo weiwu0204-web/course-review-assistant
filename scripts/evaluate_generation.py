@@ -34,7 +34,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from openai import OpenAI  # noqa: E402  确保 openai 可导入（纯文本生成也走它）
+from openai import OpenAI  # noqa: E402, F401  确保 openai 可导入（纯文本生成也走它）
 
 from app.config import get_settings  # noqa: E402
 from app.models import ExtractionResult, GenerateRequest, SlideContent  # noqa: E402

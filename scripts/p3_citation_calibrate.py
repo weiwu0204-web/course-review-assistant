@@ -32,7 +32,6 @@
 from __future__ import annotations
 
 import random
-import statistics
 import sys
 from pathlib import Path
 
@@ -63,8 +62,6 @@ def build_groups(chunks, rng: random.Random):
     for c in chunks:
         by_file.setdefault(c.file, []).append(c)
 
-    files = sorted(by_file)
-    multi = [f for f in files if len(by_file[f]) >= 2]  # 能取到"另一页"的文件
     usable = [c for c in chunks if len(c.text) >= 40]
 
     truth, wrong_page, fabricated = [], [], []
