@@ -1,3 +1,8 @@
+---
+status: current
+verified: 274dde4
+---
+
 # 版本记录
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。

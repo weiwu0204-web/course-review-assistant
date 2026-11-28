@@ -1,14 +1,67 @@
-# 📚 PPT 复习助手
+# 📚 PPT 复习助手（Course Review Assistant）
 
-多人服务版的范围、启动方法和回滚办法见 [服务版私有预览](docs/runbooks/service-preview.md)。以下是桌面版说明。
+不同高校的同名专业课在授课重点与考法上差异很大。本项目以**本校课件（`.pptx` / `.pdf`）**锁定复习范围、结合**往年试题**锁定考法，生成**可追溯到源课件页码**的复习总册，并提供带**自动引用核验**的课程知识库流式问答。
 
-不同学校的同名专业课在授课范围和考法上有差异。复习助手用本校课件（PPT / PDF）确定复习范围，结合往年试题生成可追溯到课件页码的复习手册。
+仓库同时提供两套运行形态，共用底层提取、覆盖率回检、MCP 自动补漏与检索核心：
+- **多用户服务版（主形态）**：`app.service_main:create_app` + 独立后台 `app.worker` + MySQL + 私有对象存储，提供账号隔离、不可变课件/试题版本快照、基于租约队列的批量生成与单节重试、固定版本知识库 SSE 问答与无损升级回滚。
+- **单机桌面版（兼容基线）**：`app.main:app` / `desktop_app.py`（pywebview），本机零运维运行，API Key 仅存本机 `%APPDATA%`。
 
-> 📖 设计与决策记录在 [docs/](./docs/)：[项目描述](docs/PROJECT.md) ·
-> [架构思路](docs/ARCHITECTURE.md) · [版本记录](docs/CHANGELOG.md) ·
-> [环境搭建](docs/SETUP.md) · [打包预案](docs/PACKAGING.md)
+---
 
-## ✨ 功能
+## 🏗️ 服务版与共享核心架构
+
+```mermaid
+flowchart LR
+    Browser["浏览器工作台<br/>/api/v1 + SSE"] --> API["FastAPI 服务入口<br/>owner 鉴权与版本快照"]
+    API --> DB[("MySQL<br/>会话/版本/租约队列/历史")]
+    API --> OBJ[("私有对象存储<br/>原件/章节产物/知识库分块")]
+    Worker["独立 Worker 进程<br/>短事务领取 + 标记提交"] --> DB
+    Worker --> OBJ
+    API --> Core["共享核心层 app/services<br/>三层提取 · 覆盖率 · MCP补漏 · BM25 · 引用核验"]
+    Worker --> Core
+```
+
+- 产品边界与量化基线见 [产品需求文档（PRD）](docs/prd.md) 与 [评测说明](eval/README.md)
+- 服务拓扑、模块单向依赖与历史取舍见 [服务版架构](docs/service-architecture.md) · [模块边界](docs/architecture/module-boundaries.md) · [文档总索引](docs/README.md)
+
+---
+
+## 🛠️ AI 辅助工程化体系（Harness）
+
+本项目采用 **SDD（规格驱动）+ TDD（测试先行）+ 异构门禁** 组织研发，防止无约束生成与过时上下文污染：
+
+| 维度 | 仓库落地位置 | 作用 |
+|---|---|---|
+| **规则与禁区** | [AGENTS.md](AGENTS.md) · [编码规范](docs/conventions/coding.md) | 强制 owner 派生、短事务边界、默认测试零模型调用、禁止私自加依赖 |
+| **分级研发流程** | [开发流程](docs/workflow/development-process.md) · [Git 与 Worktree 规范](docs/workflow/git-workflow.md) | 按 S/M/L 分级；并行工作树端口与数据隔离；单 PR ≤ 400 行、Merge Commit 留痕 |
+| **生命周期 Skills** | [.agents/skills/](.agents/skills/) · [工程模板](docs/templates/) | `ppt-clarify` → `ppt-spec` → `ppt-worktree` + `ppt-tdd` → `ppt-review` → `ppt-verify` |
+| **机器执行门禁** | [service-checks.yml](.github/workflows/service-checks.yml) | CI 自动执行 `ruff` 静态检查、模块依赖方向测试、文档状态与死链检查、Pytest 与前端断言 |
+
+---
+
+## ⚡ 服务版快速预览与门禁验证
+
+1. **Docker Compose 一键启动私有预览**（默认 `demo` 模式，走真实解析与 BM25 检索，不调用付费模型）：
+   ```powershell
+   Copy-Item .service.env.example .service.env   # 填入本地数据库与对象存储密码
+   docker compose --env-file .service.env -p ppt-review-preview -f deploy/compose.yaml up -d --build
+   docker compose --env-file .service.env -p ppt-review-preview -f deploy/compose.yaml exec api python -m scripts.service_admin create-user alice
+   ```
+   打开 `http://127.0.0.1:8010/` 登录体验；升级与镜像回滚步骤见 [服务版启动与回滚手册](docs/runbooks/service-preview.md)，跨进程与故障演练见 [服务版验收记录](docs/runbooks/service-verification.md)。
+
+2. **本地运行完成门禁**：
+   ```powershell
+   ruff check .
+   python -m scripts.check_docs
+   python -m pytest -q
+   node tests/test_coverage_ui.js
+   ```
+
+---
+
+## ✨ 共享核心能力与桌面版说明
+
+> 📖 桌面基线与底层专题文档：[项目描述](docs/PROJECT.md) · [三层提取架构](docs/ARCHITECTURE.md) · [PDF 文字层体检](docs/PDF-SUPPORT.md) · [版本记录](docs/CHANGELOG.md) · [环境搭建](docs/SETUP.md) · [打包预案](docs/PACKAGING.md)
 
 - 📤 网页上传 `.pptx` / `.pdf`，逐页提取文字、表格、**备注**、**公式**、**图表数据**
 - 📄 **PDF 课件支持**：直接读 PDF 文字层，零额外成本。注意「文字版 PDF」不等于

@@ -1,3 +1,8 @@
+---
+status: current
+verified: 274dde4
+---
+
 # AI 服务商型号与价格核对表
 
 > **改动 `app/config.py::AI_PROVIDERS` 前先看这份。**

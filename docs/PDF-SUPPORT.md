@@ -1,3 +1,8 @@
+---
+status: current
+verified: 274dde4
+---
+
 # PDF 课件支持
 
 > 状态：已实现（0.8.0，2026-09-10）｜代码：`app/services/pdf_extractor.py` + `extractor.py`

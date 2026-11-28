@@ -1,3 +1,8 @@
+---
+status: current
+verified: 274dde4
+---
+
 # 环境搭建
 
 ## 用 uv，不要用 conda
