@@ -1,3 +1,8 @@
+---
+status: draft
+verified: 274dde4
+---
+
 # CV 融合方案：把视觉能力真正做进 ppt-reviewer
 
 > 状态：设计稿（未改主链路）｜日期 2026-09-10

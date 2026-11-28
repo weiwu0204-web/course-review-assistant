@@ -40,6 +40,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from app.config import OUTPUT_ROOT
+from app.models import ExtractionResult
 from app.services.citation import CitationVerifier, course_terms_of
 from app.services.extractor import extract_any
 from app.services.retriever import BM25Index, Chunk, build_chunks

@@ -1,3 +1,8 @@
+---
+status: current
+verified: 274dde4
+---
+
 # 架构设计
 
 ## 核心判断：提取分三层，越靠前越便宜

@@ -94,7 +94,6 @@ def main() -> None:
 
     ft_on = [r["on"]["first_token_ms"] or 0 for r in rows]
     ft_off = [r["off"]["first_token_ms"] or 0 for r in rows]
-    rw = [r["on"]["rewrite_ms"] for r in rows]
     gen_on = [r["gen_on"] for r in rows]
     gen_off = [r["gen_off"] for r in rows]
 

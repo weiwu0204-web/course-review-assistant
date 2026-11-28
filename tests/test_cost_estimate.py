@@ -1,5 +1,4 @@
 """成本预估模块与生成错误翻译的单元测试。"""
-import pytest
 
 from app.api.routes import _friendly_ai_error
 from app.config import AI_PROVIDERS, reload_settings

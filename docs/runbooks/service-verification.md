@@ -1,3 +1,8 @@
+---
+status: current
+verified: 274dde4
+---
+
 # 服务版验收记录
 
 ## 002 浏览器工作台

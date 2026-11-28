@@ -1,3 +1,8 @@
+---
+status: current
+verified: 274dde4
+---
+
 # 项目描述
 
 ## 要解决的问题

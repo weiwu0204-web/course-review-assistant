@@ -1,0 +1,11 @@
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+extend-exclude = [".venv", ".service-data", "docs/archive", "uploads", "output"]
+
+[tool.ruff.lint]
+select = ["E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# Pytest fixture `setup` is imported from test_courseware and injected by parameter name.
+"tests/service/test_*.py" = ["F401", "F811"]

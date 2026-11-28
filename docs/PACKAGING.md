@@ -1,3 +1,8 @@
+---
+status: current
+verified: 274dde4
+---
+
 # 打包预案（Step 1：pywebview 壳 → exe）
 
 状态：**前置门槛已过，可进入打包轮**——pywebview 窗口已在本机验证通过
